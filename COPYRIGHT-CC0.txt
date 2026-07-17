@@ -1,0 +1,20 @@
+Palworld Live Map Portable
+
+Made by:
+4zr
+https://github.com/crazykorea
+discord: .4zr
+
+Copyright dedication:
+CC0 1.0 Universal
+
+This package is intentionally released under CC0 so it may be copied, modified,
+repackaged, and redistributed without permission, to the extent allowed by law.
+
+Recommended courtesy credit:
+Made by 4zr
+https://github.com/crazykorea
+discord: .4zr
+
+CC0 reference:
+https://creativecommons.org/publicdomain/zero/1.0/

@@ -1,0 +1,7 @@
+mapping/
+__pycache__/
+*.pyc
+*.pyo
+*.zip
+Thumbs.db
+.DS_Store

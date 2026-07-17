@@ -1,0 +1,69 @@
+{
+  "web_host": "0.0.0.0",
+  "web_port": 5000,
+  "rest_api_url": "http://127.0.0.1:8212/v1/api",
+  "rest_user": "admin",
+  "rest_password": "CHANGE_ME",
+  "poll_interval_seconds": 3,
+  "history_limit": 15,
+  "map_image_size": 8192,
+  "map_background": "#0b1520",
+  "world_bounds": {
+    "min_x": -2121.79,
+    "max_x": 1200.06,
+    "min_y": -2167.88,
+    "max_y": 1762.9
+  },
+  "map_layers": [
+    {
+      "id": "world_map",
+      "image_url": "/static/T_WorldMap.png",
+      "image_width": 8192,
+      "image_height": 8192,
+      "image_to_world": {
+        "a": 0.375711236,
+        "b": -0.0156508073,
+        "c": -1823.80271,
+        "d": -0.00463658188,
+        "e": -0.385279301,
+        "f": 1056.84169
+      }
+    },
+    {
+      "id": "tree_map",
+      "image_url": "/static/T_TreeMap.png",
+      "image_width": 8192,
+      "image_height": 8192,
+      "image_to_world": {
+        "a": 0.0862548982233,
+        "b": 0.00221230612851,
+        "c": -2123.2121,
+        "d": -0.0005399869936045,
+        "e": -0.08862828935115,
+        "f": 1769.06075
+      }
+    }
+  ],
+  "coordinate_transform": {
+    "offset_for_location_y": -157664.55791065,
+    "offset_for_location_x": 123467.1611767,
+    "scale": 462.962962963,
+    "post_correction": {
+      "x_from_x": 1.00839296,
+      "x_from_y": -0.000291515566,
+      "x_offset": -0.723745275,
+      "y_from_x": -0.000516414825,
+      "y_from_y": 1.00833931,
+      "y_offset": 0.172689105
+    }
+  },
+  "color_settings": {
+    "minimum_lightness": 0.56,
+    "minimum_distance": 115.0,
+    "saturation_min": 0.62,
+    "saturation_max": 0.9
+  },
+  "ui_settings": {
+    "default_language": "en"
+  }
+}

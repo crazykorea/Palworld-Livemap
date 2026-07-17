@@ -1,0 +1,1350 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Palworld Live Map Admin</title>
+<style>
+:root {
+    --bg-top: #0d151b;
+    --bg-mid: #0d161d;
+    --bg-bottom: #0d161e;
+    --panel: rgba(12, 19, 26, 0.9);
+    --border: rgba(133, 160, 182, 0.12);
+    --text: #edf4fb;
+    --muted: #9eaebe;
+    --accent: #73cafb;
+    --good: #7df1ab;
+    --bad: #ff8f8f;
+    --credit: rgba(144, 154, 166, 0.48);
+}
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    min-height: 100%;
+    color: var(--text);
+    font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+    background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 46%, var(--bg-bottom) 100%);
+}
+body { overflow-y: auto; overflow-x: hidden; }
+.shell {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    min-height: 100vh;
+    align-items: start;
+}
+.sidebar, .content { padding: 18px; }
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: rgba(9, 15, 22, 0.78);
+    border-right: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    min-height: 100vh;
+    height: 100vh;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+}
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+}
+h1, h2, h3, p { margin: 0; }
+h1 { font-size: 26px; margin-bottom: 6px; }
+.sub { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.55; }
+.row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.lang {
+    margin-left: auto;
+    width: 138px;
+}
+select, input {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: #0f1822;
+    color: var(--text);
+    padding: 10px 12px;
+}
+label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--muted);
+}
+button {
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.primary { background: var(--accent); color: #07111a; }
+.ghost { background: rgba(255,255,255,0.06); color: var(--text); }
+.status {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+.stat {
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+}
+.stat .value {
+    margin-top: 6px;
+    font-size: 21px;
+    font-weight: 800;
+}
+.muted { color: var(--muted); }
+.good { color: var(--good); }
+.bad { color: var(--bad); }
+.stack {
+    display: grid;
+    gap: 14px;
+}
+.share-box {
+    display: grid;
+    gap: 10px;
+    margin-top: 12px;
+}
+.share-note {
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(133, 160, 182, 0.12);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.linkbox {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+}
+.hidden-link {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    filter: blur(10px);
+    transition: filter 0.16s ease;
+    user-select: none;
+}
+.hidden-link.revealed {
+    filter: blur(0);
+    user-select: text;
+}
+.link-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.field-help {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.main-grid {
+    display: grid;
+    grid-template-rows: minmax(360px, 52vh) auto;
+    gap: 14px;
+}
+.map-card {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+}
+.map-wrap {
+    position: relative;
+    min-height: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(180deg, #0d151b 0%, #0d161d 46%, #0d161e 100%);
+    touch-action: none;
+    cursor: grab;
+}
+.map-wrap.dragging { cursor: grabbing; }
+#previewCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+#previewLayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.preview-tag {
+    position: absolute;
+    min-width: 82px;
+    max-width: 150px;
+    padding: 6px 10px 7px;
+    border-radius: 10px;
+    border: 2px solid currentColor;
+    background: rgba(34, 40, 47, 0.96);
+    color: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.1;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+}
+.preview-tag::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -9px;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 9px solid currentColor;
+    transform: translateX(-50%);
+}
+.preview-tag::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid rgba(34, 40, 47, 0.96);
+    transform: translateX(-50%);
+}
+.tag-line {
+    position: absolute;
+    height: 2px;
+    transform-origin: left center;
+    background: currentColor;
+    opacity: 0.92;
+}
+.triple-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+.scroll-box {
+    height: 320px;
+    overflow: auto;
+    display: grid;
+    gap: 10px;
+}
+.console {
+    height: 320px;
+    overflow: auto;
+    background: #0b1218;
+    border-radius: 14px;
+    padding: 12px;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.log { margin-bottom: 6px; }
+.player, .activity-item {
+    display: grid;
+    gap: 10px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+}
+.player {
+    grid-template-columns: auto 1fr auto;
+    cursor: pointer;
+}
+.player.tracked {
+    background: rgba(115, 202, 251, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(115, 202, 251, 0.2);
+}
+.activity-item {
+    grid-template-columns: 1fr auto;
+}
+.swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+}
+.join { background: rgba(125, 241, 171, 0.12); color: var(--good); }
+.leave { background: rgba(255, 143, 143, 0.12); color: var(--bad); }
+.credit {
+    position: sticky;
+    bottom: 0;
+    margin-top: auto;
+    padding-top: 12px;
+    padding-bottom: 6px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(9, 15, 22, 0) 0%, rgba(9, 15, 22, 0.92) 28%, rgba(9, 15, 22, 0.98) 100%);
+    color: var(--credit);
+    font-size: 11px;
+    line-height: 1.55;
+}
+.credit a {
+    color: rgba(149, 161, 177, 0.58);
+    text-decoration: none;
+}
+@media (max-width: 1200px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { min-height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    .status { grid-template-columns: 1fr; }
+    .triple-grid { grid-template-columns: 1fr; }
+    .main-grid { grid-template-rows: minmax(320px, 42vh) auto; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+    <aside class="sidebar">
+        <div class="row">
+            <h1 id="title">Admin Console</h1>
+            <select id="languageSelect" class="lang">
+                <option value="en">English</option>
+                <option value="ko">한국어</option>
+                <option value="ja">日本語</option>
+                <option value="es">Español</option>
+                <option value="zh">中文</option>
+            </select>
+        </div>
+
+        <section class="panel">
+            <h3 id="settingsTitle">Settings</h3>
+            <div class="stack" style="margin-top:12px;">
+                <div>
+                    <label id="pollLabel" for="pollInterval">Poll interval (sec)</label>
+                    <input id="pollInterval" type="number" min="1">
+                </div>
+                <div>
+                    <label id="historyLabel" for="historyLimit">Trail count</label>
+                    <input id="historyLimit" type="number" min="1">
+                </div>
+                <div>
+                    <label id="passwordLabel" for="restPassword">Admin password</label>
+                    <input id="restPassword" type="password" autocomplete="off" spellcheck="false">
+                    <div id="passwordHelp" class="field-help">Set `RESTAPIEnabled=True` in `PalWorldSettings.ini`, then enter the `AdminPassword` value.</div>
+                </div>
+            </div>
+            <div class="row" style="margin-top:14px;">
+                <button id="applyButton" class="primary">Apply</button>
+                <span id="saveStatus" class="muted"></span>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h3 id="shareTitle">Share Link</h3>
+            <div class="share-box" id="links"></div>
+        </section>
+
+        <div class="credit">
+            <a href="https://discordapp.com/users/368651440396173312" target="_blank" rel="noreferrer">Made by 4zr</a><br>
+            <a href="https://github.com/crazykorea" target="_blank" rel="noreferrer">https://github.com/crazykorea</a><br>
+            CC0 1.0 Universal
+        </div>
+    </aside>
+
+    <main class="content">
+        <section class="panel">
+            <div class="status">
+                <div class="stat">
+                    <div class="muted" id="onlineTitle">Online players</div>
+                    <div class="value" id="playerCount">0</div>
+                </div>
+                <div class="stat">
+                    <div class="muted" id="updatedTitle">Last update</div>
+                    <div class="value" id="updatedAt">-</div>
+                </div>
+                <div class="stat">
+                    <div class="muted" id="statusTitle">Status</div>
+                    <div class="value good" id="statusText">OK</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="main-grid">
+            <section class="panel map-card">
+                <div>
+                    <h3 id="previewTitle">Live Map Preview</h3>
+                    <p class="sub" id="previewSub">Scroll to zoom. Drag to move the preview map.</p>
+                </div>
+                <div class="map-wrap" id="previewWrap">
+                    <canvas id="previewCanvas"></canvas>
+                    <div id="previewLayer"></div>
+                </div>
+            </section>
+
+            <div class="triple-grid">
+                <section class="panel">
+                    <h3 id="playersTitle">Players</h3>
+                    <p class="sub" id="playersSub">Click a player to center the preview on that player.</p>
+                    <div class="scroll-box" id="players"></div>
+                </section>
+
+                <section class="panel">
+                    <h3 id="activityTitle">Activity</h3>
+                    <p class="sub" id="activitySub">Join and leave records detected from the player poller.</p>
+                    <div class="scroll-box" id="activity"></div>
+                </section>
+
+                <section class="panel">
+                    <h3 id="consoleTitle">Console</h3>
+                    <p class="sub" id="consoleSub">Backend polling logs and runtime messages.</p>
+                    <div class="console" id="console"></div>
+                </section>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+const i18n = {
+    en: {
+        title: "Admin Console",
+        settingsTitle: "Settings",
+        pollLabel: "Poll interval (sec)",
+        historyLabel: "Trail count",
+        applyButton: "Apply",
+        shareTitle: "Share Link",
+        shareWarning: "Your public IP is exposed. Public servers are not recommended. If you must use this on a public server, connect your IP to a domain that hides direct IP extraction, then distribute it as domain:5000.",
+        reveal: "Reveal",
+        hide: "Hide",
+        copy: "Copy",
+        copied: "Copied",
+        unavailable: "Unavailable",
+        onlineTitle: "Online players",
+        updatedTitle: "Last update",
+        statusTitle: "Status",
+        previewTitle: "Live Map Preview",
+        previewSub: "Scroll to zoom. Drag to move the preview map.",
+        playersTitle: "Players",
+        playersSub: "Click a player to center the preview on that player.",
+        activityTitle: "Activity",
+        activitySub: "Join and leave records detected from the player poller.",
+        consoleTitle: "Console",
+        consoleSub: "Backend polling logs and runtime messages.",
+        playersEmpty: "No players are currently connected.",
+        activityEmpty: "No join or leave records yet.",
+        statusOk: "OK",
+        level: "Lv",
+        coord: "Coord",
+        join: "Joined",
+        leave: "Left",
+        saved: "Settings saved.",
+        failed: "Save failed"
+    },
+    ko: {
+        title: "관리자 콘솔",
+        settingsTitle: "설정",
+        pollLabel: "갱신 주기(초)",
+        historyLabel: "경로 저장 개수",
+        applyButton: "적용",
+        shareTitle: "공유 링크",
+        shareWarning: "외부 아이피가 노출됩니다. 공개서버에서 사용을 권하지 않습니다. 공개서버에서 사용하고 싶다면 CDN 등으로 직접 IP 추출이 어려운 도메인에 연결한 뒤 domain:5000 형식으로 배포하세요.",
+        reveal: "표시",
+        hide: "숨기기",
+        copy: "복사",
+        copied: "복사됨",
+        unavailable: "확인 불가",
+        onlineTitle: "온라인 플레이어",
+        updatedTitle: "마지막 갱신",
+        statusTitle: "상태",
+        previewTitle: "실시간 지도 미리보기",
+        previewSub: "휠로 확대/축소하고 드래그로 이동할 수 있습니다.",
+        playersTitle: "플레이어",
+        playersSub: "플레이어를 클릭하면 미리보기가 해당 플레이어를 중심으로 이동합니다.",
+        activityTitle: "활동",
+        activitySub: "플레이어 감지를 통해 기록된 접속 및 퇴장 기록입니다.",
+        consoleTitle: "콘솔",
+        consoleSub: "백엔드 폴링 로그와 실행 메시지입니다.",
+        playersEmpty: "현재 접속 중인 플레이어가 없습니다.",
+        activityEmpty: "아직 접속 기록이 없습니다.",
+        statusOk: "정상",
+        level: "Lv",
+        coord: "좌표",
+        join: "접속",
+        leave: "퇴장",
+        saved: "설정이 저장되었습니다.",
+        failed: "저장 실패"
+    },
+    ja: {
+        title: "管理コンソール",
+        settingsTitle: "設定",
+        pollLabel: "更新間隔(秒)",
+        historyLabel: "軌跡保存数",
+        applyButton: "適用",
+        shareTitle: "共有リンク",
+        shareWarning: "外部 IP が公開されます。公開サーバーでの使用は推奨しません。公開サーバーで使う場合は、CDN などで直接 IP を特定しにくいドメインへ接続し、domain:5000 の形式で配布してください。",
+        reveal: "表示",
+        hide: "隠す",
+        copy: "コピー",
+        copied: "コピー済み",
+        unavailable: "利用不可",
+        onlineTitle: "オンライン人数",
+        updatedTitle: "最終更新",
+        statusTitle: "状態",
+        previewTitle: "ライブマップ プレビュー",
+        previewSub: "ホイールで拡大縮小、ドラッグで移動できます。",
+        playersTitle: "プレイヤー",
+        playersSub: "プレイヤーをクリックすると、そのプレイヤーを中心に表示します。",
+        activityTitle: "活動",
+        activitySub: "プレイヤーポーラーで検出した参加と退出の記録です。",
+        consoleTitle: "コンソール",
+        consoleSub: "バックエンドのポーリングログと実行メッセージです。",
+        playersEmpty: "現在接続中のプレイヤーはいません。",
+        activityEmpty: "まだ接続記録はありません。",
+        statusOk: "正常",
+        level: "Lv",
+        coord: "座標",
+        join: "参加",
+        leave: "退出",
+        saved: "設定を保存しました。",
+        failed: "保存失敗"
+    },
+    es: {
+        title: "Consola de administración",
+        settingsTitle: "Configuración",
+        pollLabel: "Intervalo (seg)",
+        historyLabel: "Cantidad de rutas",
+        applyButton: "Aplicar",
+        shareTitle: "Enlace compartido",
+        shareWarning: "Tu IP pública quedará expuesta. No se recomienda usarlo en servidores públicos. Si debes usarlo en un servidor público, conecta tu IP a un dominio que dificulte la extracción directa y distribúyelo como domain:5000.",
+        reveal: "Mostrar",
+        hide: "Ocultar",
+        copy: "Copiar",
+        copied: "Copiado",
+        unavailable: "No disponible",
+        onlineTitle: "Jugadores en línea",
+        updatedTitle: "Última actualización",
+        statusTitle: "Estado",
+        previewTitle: "Vista previa del mapa",
+        previewSub: "Usa la rueda para ampliar y arrastra para mover el mapa.",
+        playersTitle: "Jugadores",
+        playersSub: "Haz clic en un jugador para centrar la vista previa en ese jugador.",
+        activityTitle: "Actividad",
+        activitySub: "Registros de entrada y salida detectados por el sondeo.",
+        consoleTitle: "Consola",
+        consoleSub: "Logs del backend y mensajes de ejecución.",
+        playersEmpty: "No hay jugadores conectados.",
+        activityEmpty: "Todavía no hay registros de actividad.",
+        statusOk: "OK",
+        level: "Nv",
+        coord: "Coord",
+        join: "Entró",
+        leave: "Salió",
+        saved: "Configuración guardada.",
+        failed: "Error al guardar"
+    },
+    zh: {
+        title: "管理控制台",
+        settingsTitle: "设置",
+        pollLabel: "刷新周期(秒)",
+        historyLabel: "路径保存数量",
+        applyButton: "应用",
+        shareTitle: "共享链接",
+        shareWarning: "外部 IP 会被暴露，不建议在公开服务器使用。如果必须公开使用，请先绑定到难以直接提取 IP 的域名，再以 domain:5000 的形式分发。",
+        reveal: "显示",
+        hide: "隐藏",
+        copy: "复制",
+        copied: "已复制",
+        unavailable: "不可用",
+        onlineTitle: "在线玩家",
+        updatedTitle: "最后更新",
+        statusTitle: "状态",
+        previewTitle: "实时地图预览",
+        previewSub: "可使用滚轮缩放，拖动移动地图。",
+        playersTitle: "玩家",
+        playersSub: "点击玩家后，预览会居中到该玩家。",
+        activityTitle: "活动",
+        activitySub: "通过轮询检测到的加入与离开记录。",
+        consoleTitle: "控制台",
+        consoleSub: "后端轮询日志与运行消息。",
+        playersEmpty: "当前没有在线玩家。",
+        activityEmpty: "目前还没有连接记录。",
+        statusOk: "正常",
+        level: "Lv",
+        coord: "坐标",
+        join: "加入",
+        leave: "离开",
+        saved: "设置已保存。",
+        failed: "保存失败"
+    }
+};
+
+const state = {
+    currentLang: "en",
+    languageInitialized: false,
+    latestStatus: null,
+    revealed: false,
+    trackedSteamId: null,
+    settingDirty: false,
+    preview: {
+        initialized: false,
+        map: {
+            world_bounds: { min_x: -2200, max_x: 1200, min_y: -2200, max_y: 1800 },
+            layers: [],
+        },
+        cameraX: 0,
+        cameraY: 0,
+        zoom: 1,
+        minZoom: 1,
+        maxZoom: 1,
+        imageCache: new Map(),
+        activePointers: new Map(),
+        dragStart: null,
+        pinchStart: null,
+        pendingRender: false,
+        mapSignature: ""
+    }
+};
+
+const localizedOverrides = {
+    en: {
+        passwordLabel: "Admin password",
+        passwordHelp: "Set RESTAPIEnabled=True in PalWorldSettings.ini, then enter the AdminPassword value.",
+        shareGuide: "Forward port 5000 in your router settings and allow port 5000 in your firewall.",
+        shareWarning: "Notice: Your public IP is exposed, so direct use on public servers is not recommended. When using this on a public server, use a domain that hides the origin IP through Cloudflare or a similar service, then share it as 'domain:5000'."
+    },
+    ko: {
+        title: "관리자 콘솔",
+        settingsTitle: "설정",
+        passwordLabel: "관리자 비밀번호",
+        passwordHelp: "PalWorldSettings.ini 내부의 RESTAPIEnabled를 True로 바꾸고, AdminPassword 값을 입력하세요.",
+        pollLabel: "갱신 주기(초)",
+        historyLabel: "경로 저장 개수",
+        applyButton: "적용",
+        shareTitle: "공유 링크",
+        shareGuide: "공유기 설정에서 5000 포트를 포트 포워딩하고, 방화벽에서 5000 포트를 예외 설정 해야 합니다.",
+        shareWarning: "주의사항: 공인 IP가 노출되므로 공개 서버에서는 직접 사용을 권장하지 않습니다. 공개 서버에서 사용 시에는 Cloudflare 등으로 원본 IP를 숨긴 도메인을 사용하여 'domain:5000' 형식으로 배포하세요.",
+        reveal: "표시",
+        hide: "숨기기",
+        copy: "복사",
+        copied: "복사됨",
+        unavailable: "확인 불가",
+        onlineTitle: "온라인 플레이어",
+        updatedTitle: "마지막 갱신",
+        statusTitle: "상태",
+        previewTitle: "실시간 지도 미리보기",
+        previewSub: "휠로 확대/축소하고 드래그로 이동할 수 있습니다.",
+        playersTitle: "플레이어",
+        playersSub: "플레이어를 클릭하면 미리보기가 해당 플레이어를 중심으로 이동합니다.",
+        activityTitle: "활동",
+        activitySub: "플레이어 감지를 통해 기록된 접속 및 퇴장 기록입니다.",
+        consoleTitle: "콘솔",
+        consoleSub: "백엔드 폴링 로그와 실행 메시지입니다.",
+        playersEmpty: "현재 접속 중인 플레이어가 없습니다.",
+        activityEmpty: "아직 접속 기록이 없습니다.",
+        statusOk: "정상",
+        coord: "좌표",
+        join: "접속",
+        leave: "퇴장",
+        saved: "설정이 저장되었습니다.",
+        failed: "저장 실패"
+    },
+    ja: {
+        title: "管理者コンソール",
+        settingsTitle: "設定",
+        passwordLabel: "管理者パスワード",
+        passwordHelp: "PalWorldSettings.ini 内で RESTAPIEnabled を True に変更し、AdminPassword の値を入力してください。",
+        pollLabel: "更新間隔(秒)",
+        historyLabel: "経路保存数",
+        applyButton: "適用",
+        shareTitle: "共有リンク",
+        shareGuide: "ルーター設定で 5000 ポートをポートフォワーディングし、ファイアウォールでも 5000 ポートを例外として許可してください。",
+        shareWarning: "注意: グローバル IP が公開されるため、公開サーバーでの直接利用は推奨しません。公開サーバーで使用する場合は、Cloudflare などで元の IP を隠したドメインを使い、'domain:5000' の形式で配布してください。",
+        reveal: "表示",
+        hide: "隠す",
+        copy: "コピー",
+        copied: "コピー済み",
+        unavailable: "利用不可",
+        onlineTitle: "オンラインプレイヤー",
+        updatedTitle: "最終更新",
+        statusTitle: "状態",
+        previewTitle: "ライブマッププレビュー",
+        previewSub: "ホイールで拡大・縮小し、ドラッグで移動できます。",
+        playersTitle: "プレイヤー",
+        playersSub: "プレイヤーをクリックすると、プレビューがそのプレイヤーを中心に移動します。",
+        activityTitle: "アクティビティ",
+        activitySub: "プレイヤー検知によって記録された参加・退出ログです。",
+        consoleTitle: "コンソール",
+        consoleSub: "バックエンドのポーリングログと実行メッセージです。",
+        playersEmpty: "現在接続中のプレイヤーはいません。",
+        activityEmpty: "まだ接続記録はありません。",
+        statusOk: "正常",
+        coord: "座標",
+        join: "参加",
+        leave: "退出",
+        saved: "設定を保存しました。",
+        failed: "保存失敗"
+    },
+    es: {
+        passwordLabel: "Contrasena de administrador",
+        passwordHelp: "Cambia RESTAPIEnabled a True en PalWorldSettings.ini y luego introduce el valor de AdminPassword.",
+        shareGuide: "Debes configurar el reenvio del puerto 5000 en tu router y permitir el puerto 5000 en el firewall.",
+        shareWarning: "Aviso: tu IP pública queda expuesta, por lo que no se recomienda el uso directo en servidores públicos. Si vas a usarlo en un servidor público, utiliza un dominio que oculte la IP de origen mediante Cloudflare o un servicio similar y compártelo con el formato 'domain:5000'."
+    },
+    zh: {
+        title: "管理员控制台",
+        settingsTitle: "设置",
+        passwordLabel: "管理员密码",
+        passwordHelp: "请先将 PalWorldSettings.ini 中的 RESTAPIEnabled 改为 True，然后输入 AdminPassword 的值。",
+        pollLabel: "刷新周期(秒)",
+        historyLabel: "路径保存数量",
+        applyButton: "应用",
+        shareTitle: "共享链接",
+        shareGuide: "需要在路由器设置中转发 5000 端口，并在防火墙中将 5000 端口设为例外。",
+        shareWarning: "注意：由于会暴露公网 IP，因此不建议在公开服务器中直接使用。若要在公开服务器中使用，请通过 Cloudflare 等服务使用可隐藏源 IP 的域名，并以 'domain:5000' 的形式发布。",
+        reveal: "显示",
+        hide: "隐藏",
+        copy: "复制",
+        copied: "已复制",
+        unavailable: "无法获取",
+        onlineTitle: "在线玩家",
+        updatedTitle: "最后刷新",
+        statusTitle: "状态",
+        previewTitle: "实时地图预览",
+        previewSub: "可使用滚轮缩放，并通过拖拽移动地图。",
+        playersTitle: "玩家",
+        playersSub: "点击玩家后，预览会移动到该玩家附近。",
+        activityTitle: "活动",
+        activitySub: "通过玩家检测记录的进入与离开日志。",
+        consoleTitle: "控制台",
+        consoleSub: "后端轮询日志与运行消息。",
+        playersEmpty: "当前没有在线玩家。",
+        activityEmpty: "暂无连接记录。",
+        statusOk: "正常",
+        coord: "坐标",
+        join: "加入",
+        leave: "离开",
+        saved: "设置已保存。",
+        failed: "保存失败"
+    }
+};
+
+for (const [lang, overrides] of Object.entries(localizedOverrides)) {
+    i18n[lang] = { ...(i18n[lang] || {}), ...overrides };
+}
+
+const previewWrap = document.getElementById("previewWrap");
+const previewCanvas = document.getElementById("previewCanvas");
+const previewCtx = previewCanvas.getContext("2d");
+const previewLayer = document.getElementById("previewLayer");
+const restPasswordInput = document.getElementById("restPassword");
+const pollIntervalInput = document.getElementById("pollInterval");
+const historyLimitInput = document.getElementById("historyLimit");
+
+const textIds = [
+    "title","settingsTitle","passwordLabel","passwordHelp","pollLabel","historyLabel","applyButton","shareTitle",
+    "onlineTitle","updatedTitle","statusTitle","previewTitle","previewSub",
+    "playersTitle","playersSub","activityTitle","activitySub","consoleTitle","consoleSub"
+];
+
+function t(key) {
+    return i18n[state.currentLang]?.[key] || key;
+}
+
+function applyLanguage() {
+    document.documentElement.lang = state.currentLang;
+    for (const id of textIds) {
+        document.getElementById(id).textContent = t(id);
+    }
+    renderLink(state.latestStatus?.links || {});
+    renderPlayers(state.latestStatus?.players || []);
+    renderActivity(state.latestStatus?.connection_events || []);
+    document.getElementById("languageSelect").value = state.currentLang;
+}
+
+function formatTime(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+}
+
+function setForm(config) {
+    if (state.settingDirty) return;
+    restPasswordInput.value = config.rest_password || "";
+    pollIntervalInput.value = config.poll_interval_seconds;
+    historyLimitInput.value = config.history_limit;
+}
+
+function markSettingsDirty() {
+    state.settingDirty = true;
+}
+
+pollIntervalInput.addEventListener("input", markSettingsDirty);
+historyLimitInput.addEventListener("input", markSettingsDirty);
+restPasswordInput.addEventListener("input", markSettingsDirty);
+
+function renderLink(links) {
+    const host = document.getElementById("links");
+    host.innerHTML = "";
+    const value = links.external || t("unavailable");
+
+    const guide = document.createElement("div");
+    guide.className = "share-note";
+    guide.textContent = t("shareGuide");
+    host.appendChild(guide);
+
+    const warning = document.createElement("div");
+    warning.className = "share-note";
+    warning.textContent = t("shareWarning");
+    host.appendChild(warning);
+
+    const box = document.createElement("div");
+    box.className = "linkbox";
+
+    const code = document.createElement("div");
+    code.className = `hidden-link${state.revealed ? " revealed" : ""}`;
+    code.textContent = value;
+    box.addEventListener("mouseleave", () => {
+        if (!state.revealed) return;
+        state.revealed = false;
+        renderLink(links);
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "link-actions";
+
+    const revealButton = document.createElement("button");
+    revealButton.className = "ghost";
+    revealButton.textContent = state.revealed ? t("hide") : t("reveal");
+    revealButton.disabled = value === t("unavailable");
+    revealButton.onclick = () => {
+        state.revealed = !state.revealed;
+        renderLink(links);
+    };
+
+    const copyButton = document.createElement("button");
+    copyButton.className = "ghost";
+    copyButton.textContent = t("copy");
+    copyButton.disabled = value === t("unavailable");
+    copyButton.onclick = async () => {
+        await navigator.clipboard.writeText(value);
+        copyButton.textContent = t("copied");
+        setTimeout(() => {
+            copyButton.textContent = t("copy");
+        }, 1200);
+    };
+
+    actions.appendChild(revealButton);
+    actions.appendChild(copyButton);
+    box.appendChild(code);
+    box.appendChild(actions);
+    host.appendChild(box);
+}
+
+function renderPlayers(players) {
+    const host = document.getElementById("players");
+    host.innerHTML = "";
+    if (!players.length) {
+        host.innerHTML = `<div class="muted">${t("playersEmpty")}</div>`;
+        return;
+    }
+    for (const player of players) {
+        const row = document.createElement("div");
+        row.className = `player${player.steamid === state.trackedSteamId ? " tracked" : ""}`;
+        row.innerHTML = `
+            <span class="swatch" style="background:${player.color}"></span>
+            <div>
+                <div><strong>${escapeHtml(player.name)}</strong> ${t("level")} ${player.level}</div>
+                <div class="muted">${t("coord")} ${Math.round(player.position.x)}, ${Math.round(player.position.y)}</div>
+            </div>
+            <div class="muted">${formatTime(player.last_update)}</div>
+        `;
+        row.addEventListener("click", () => {
+            state.trackedSteamId = player.steamid;
+            centerPreviewOnTracked();
+            renderPlayers(state.latestStatus?.players || []);
+            renderPreview();
+        });
+        host.appendChild(row);
+    }
+}
+
+function renderActivity(events) {
+    const host = document.getElementById("activity");
+    host.innerHTML = "";
+    if (!events.length) {
+        host.innerHTML = `<div class="muted">${t("activityEmpty")}</div>`;
+        return;
+    }
+    for (const event of events) {
+        const row = document.createElement("div");
+        row.className = "activity-item";
+        row.innerHTML = `
+            <div>
+                <div><strong>${escapeHtml(event.name)}</strong></div>
+                <div class="muted">${formatTime(event.time)}</div>
+            </div>
+            <span class="badge ${event.type}">${t(event.type)}</span>
+        `;
+        host.appendChild(row);
+    }
+}
+
+function renderLogs(logs) {
+    const host = document.getElementById("console");
+    host.innerHTML = "";
+    for (const item of logs) {
+        const line = document.createElement("div");
+        line.className = "log";
+        line.textContent = `[${item.time}] [${item.level}] ${item.message}`;
+        line.style.color = item.level === "ERROR" ? "#ff8f8f" : item.level === "INFO" ? "#8fdcff" : "#eef5ff";
+        host.appendChild(line);
+    }
+    host.scrollTop = host.scrollHeight;
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function getWorldWidth() {
+    const bounds = state.preview.map.world_bounds;
+    return bounds.max_x - bounds.min_x;
+}
+
+function getWorldHeight() {
+    const bounds = state.preview.map.world_bounds;
+    return bounds.max_y - bounds.min_y;
+}
+
+function getExpandedBounds() {
+    const width = getWorldWidth();
+    const height = getWorldHeight();
+    return {
+        min_x: state.preview.map.world_bounds.min_x - (width * 0.3),
+        max_x: state.preview.map.world_bounds.max_x + (width * 0.3),
+        min_y: state.preview.map.world_bounds.min_y - (height * 0.3),
+        max_y: state.preview.map.world_bounds.max_y + (height * 0.3),
+    };
+}
+
+function worldToPreview(position) {
+    const rect = previewWrap.getBoundingClientRect();
+    return {
+        x: (position.x - state.preview.cameraX) * state.preview.zoom + rect.width / 2,
+        y: (state.preview.cameraY - position.y) * state.preview.zoom + rect.height / 2,
+    };
+}
+
+function screenToPreviewWorld(screenX, screenY) {
+    const rect = previewWrap.getBoundingClientRect();
+    return {
+        x: state.preview.cameraX + ((screenX - rect.width / 2) / state.preview.zoom),
+        y: state.preview.cameraY - ((screenY - rect.height / 2) / state.preview.zoom),
+    };
+}
+
+function resizePreviewCanvas() {
+    const rect = previewWrap.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * ratio));
+    const height = Math.max(1, Math.round(rect.height * ratio));
+    if (previewCanvas.width !== width || previewCanvas.height !== height) {
+        previewCanvas.width = width;
+        previewCanvas.height = height;
+    }
+    previewCanvas.style.width = `${rect.width}px`;
+    previewCanvas.style.height = `${rect.height}px`;
+    previewCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+
+function applyPreviewZoomBounds() {
+    const rect = previewWrap.getBoundingClientRect();
+    const minZoom = Math.min(
+        rect.width / Math.max(1, getWorldWidth()),
+        rect.height / Math.max(1, getWorldHeight())
+    );
+    state.preview.minZoom = minZoom;
+    state.preview.maxZoom = minZoom * 16;
+    state.preview.zoom = clamp(state.preview.zoom, state.preview.minZoom, state.preview.maxZoom);
+}
+
+function clampPreviewCamera() {
+    const rect = previewWrap.getBoundingClientRect();
+    const bounds = getExpandedBounds();
+    const halfWorldWidth = rect.width / (2 * state.preview.zoom);
+    const halfWorldHeight = rect.height / (2 * state.preview.zoom);
+    const totalWidth = bounds.max_x - bounds.min_x;
+    const totalHeight = bounds.max_y - bounds.min_y;
+
+    if (halfWorldWidth >= totalWidth / 2) {
+        state.preview.cameraX = (bounds.min_x + bounds.max_x) / 2;
+    } else {
+        state.preview.cameraX = clamp(state.preview.cameraX, bounds.min_x + halfWorldWidth, bounds.max_x - halfWorldWidth);
+    }
+
+    if (halfWorldHeight >= totalHeight / 2) {
+        state.preview.cameraY = (bounds.min_y + bounds.max_y) / 2;
+    } else {
+        state.preview.cameraY = clamp(state.preview.cameraY, bounds.min_y + halfWorldHeight, bounds.max_y - halfWorldHeight);
+    }
+}
+
+function fillPreviewBackground(rect) {
+    const gradient = previewCtx.createLinearGradient(0, 0, 0, rect.height);
+    gradient.addColorStop(0, "#0d151b");
+    gradient.addColorStop(0.52, "#0d161d");
+    gradient.addColorStop(1, "#0d161e");
+    previewCtx.setTransform(1, 0, 0, 1, 0, 0);
+    previewCtx.fillStyle = gradient;
+    previewCtx.fillRect(0, 0, rect.width, rect.height);
+}
+
+function ensureLayerImage(layer) {
+    if (state.preview.imageCache.has(layer.image_url)) {
+        return state.preview.imageCache.get(layer.image_url);
+    }
+    const image = new Image();
+    image.decoding = "async";
+    image.src = layer.image_url;
+    image.addEventListener("load", renderPreview);
+    state.preview.imageCache.set(layer.image_url, image);
+    return image;
+}
+
+function drawPreviewLayers() {
+    const rect = previewWrap.getBoundingClientRect();
+    previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+    fillPreviewBackground(rect);
+    for (const layer of state.preview.map.layers) {
+        const image = ensureLayerImage(layer);
+        if (!image.complete || !image.naturalWidth) continue;
+        const transform = layer.image_to_world;
+        previewCtx.setTransform(
+            state.preview.zoom * transform.a,
+            state.preview.zoom * (-transform.d),
+            state.preview.zoom * transform.b,
+            state.preview.zoom * (-transform.e),
+            state.preview.zoom * (transform.c - state.preview.cameraX) + rect.width / 2,
+            state.preview.zoom * (state.preview.cameraY - transform.f) + rect.height / 2
+        );
+        previewCtx.drawImage(image, 0, 0, layer.image_width, layer.image_height);
+    }
+}
+
+function drawPreviewPaths() {
+    previewCtx.save();
+    previewCtx.lineCap = "round";
+    previewCtx.lineJoin = "round";
+    for (const player of (state.latestStatus?.players || [])) {
+        const history = Array.isArray(player.history) ? player.history : [];
+        if (history.length < 2) continue;
+        for (let i = 1; i < history.length; i += 1) {
+            const prev = worldToPreview(history[i - 1]);
+            const current = worldToPreview(history[i]);
+            const ratio = i / (history.length - 1);
+            previewCtx.strokeStyle = player.color;
+            previewCtx.globalAlpha = 0.16 + (ratio * 0.76);
+            previewCtx.lineWidth = 1.2 + (ratio * 3.8);
+            previewCtx.beginPath();
+            previewCtx.moveTo(prev.x, prev.y);
+            previewCtx.lineTo(current.x, current.y);
+            previewCtx.stroke();
+        }
+    }
+    previewCtx.restore();
+    previewCtx.globalAlpha = 1;
+}
+
+function centerPreviewOnTracked() {
+    const players = state.latestStatus?.players || [];
+    const tracked = players.find((player) => player.steamid === state.trackedSteamId);
+    if (tracked) {
+        state.preview.cameraX = tracked.position.x;
+        state.preview.cameraY = tracked.position.y;
+        state.preview.zoom = clamp(Math.max(state.preview.zoom, state.preview.minZoom * 2.4), state.preview.minZoom, state.preview.maxZoom);
+        return;
+    }
+    const bounds = state.preview.map.world_bounds;
+    state.preview.cameraX = (bounds.min_x + bounds.max_x) / 2;
+    state.preview.cameraY = (bounds.min_y + bounds.max_y) / 2;
+    state.preview.zoom = state.preview.minZoom;
+}
+
+function getPreviewMapSignature(config) {
+    return JSON.stringify({
+        world_bounds: config.world_bounds,
+        map_layers: config.map_layers || []
+    });
+}
+
+function renderPreviewLabels() {
+    previewLayer.innerHTML = "";
+    const players = state.latestStatus?.players || [];
+    for (const player of players) {
+        const screen = worldToPreview(player.position);
+        const rect = previewWrap.getBoundingClientRect();
+        if (screen.x < -180 || screen.x > rect.width + 180 || screen.y < -120 || screen.y > rect.height + 120) {
+            continue;
+        }
+        const tag = document.createElement("div");
+        tag.className = "preview-tag";
+        tag.style.color = player.color;
+        const left = Math.round(screen.x - 48);
+        const top = Math.round(screen.y - 44);
+        tag.style.left = `${left}px`;
+        tag.style.top = `${top}px`;
+        tag.innerHTML = `${escapeHtml(player.name)}<br><span style="font-size:11px;opacity:0.88;">${t("level")} ${player.level}</span>`;
+        previewLayer.appendChild(tag);
+
+        const tipX = left + 48;
+        const tipY = top + 34;
+        const deltaX = screen.x - tipX;
+        const deltaY = screen.y - tipY;
+        const line = document.createElement("div");
+        line.className = "tag-line";
+        line.style.color = player.color;
+        line.style.left = `${tipX}px`;
+        line.style.top = `${tipY}px`;
+        line.style.width = `${Math.hypot(deltaX, deltaY)}px`;
+        line.style.transform = `rotate(${Math.atan2(deltaY, deltaX)}rad)`;
+        previewLayer.appendChild(line);
+    }
+}
+
+function schedulePreviewRender() {
+    if (state.preview.pendingRender) return;
+    state.preview.pendingRender = true;
+    requestAnimationFrame(() => {
+        state.preview.pendingRender = false;
+        renderPreview();
+    });
+}
+
+function renderPreview() {
+    resizePreviewCanvas();
+    applyPreviewZoomBounds();
+    clampPreviewCamera();
+    drawPreviewLayers();
+    drawPreviewPaths();
+    renderPreviewLabels();
+}
+
+function zoomPreviewAt(clientX, clientY, nextZoom) {
+    const rect = previewWrap.getBoundingClientRect();
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+    const anchor = screenToPreviewWorld(localX, localY);
+    state.preview.zoom = clamp(nextZoom, state.preview.minZoom, state.preview.maxZoom);
+    state.preview.cameraX = anchor.x - ((localX - rect.width / 2) / state.preview.zoom);
+    state.preview.cameraY = anchor.y + ((localY - rect.height / 2) / state.preview.zoom);
+    schedulePreviewRender();
+}
+
+previewWrap.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.12 : 0.9;
+    zoomPreviewAt(event.clientX, event.clientY, state.preview.zoom * factor);
+}, { passive: false });
+
+previewWrap.addEventListener("pointerdown", (event) => {
+    previewWrap.setPointerCapture(event.pointerId);
+    state.preview.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (state.preview.activePointers.size === 1) {
+        previewWrap.classList.add("dragging");
+        state.preview.dragStart = {
+            x: event.clientX,
+            y: event.clientY,
+            cameraX: state.preview.cameraX,
+            cameraY: state.preview.cameraY
+        };
+    } else if (state.preview.activePointers.size === 2) {
+        const points = [...state.preview.activePointers.values()];
+        state.preview.dragStart = null;
+        previewWrap.classList.remove("dragging");
+        state.preview.pinchStart = {
+            centerX: (points[0].x + points[1].x) / 2,
+            centerY: (points[0].y + points[1].y) / 2,
+            distance: Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y),
+            zoom: state.preview.zoom,
+            cameraX: state.preview.cameraX,
+            cameraY: state.preview.cameraY
+        };
+    }
+});
+
+previewWrap.addEventListener("pointermove", (event) => {
+    if (!state.preview.activePointers.has(event.pointerId)) return;
+    state.preview.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (state.preview.activePointers.size === 1 && state.preview.dragStart) {
+        const deltaX = event.clientX - state.preview.dragStart.x;
+        const deltaY = event.clientY - state.preview.dragStart.y;
+        state.preview.cameraX = state.preview.dragStart.cameraX - (deltaX / state.preview.zoom);
+        state.preview.cameraY = state.preview.dragStart.cameraY + (deltaY / state.preview.zoom);
+        schedulePreviewRender();
+        return;
+    }
+
+    if (state.preview.activePointers.size === 2 && state.preview.pinchStart) {
+        const points = [...state.preview.activePointers.values()];
+        const centerX = (points[0].x + points[1].x) / 2;
+        const centerY = (points[0].y + points[1].y) / 2;
+        const distance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y) || 1;
+        const ratio = distance / Math.max(1, state.preview.pinchStart.distance);
+        state.preview.cameraX = state.preview.pinchStart.cameraX;
+        state.preview.cameraY = state.preview.pinchStart.cameraY;
+        state.preview.zoom = state.preview.pinchStart.zoom;
+        zoomPreviewAt(centerX, centerY, state.preview.pinchStart.zoom * ratio);
+    }
+});
+
+function releasePreviewPointer(event) {
+    state.preview.activePointers.delete(event.pointerId);
+    if (state.preview.activePointers.size === 0) {
+        state.preview.dragStart = null;
+        state.preview.pinchStart = null;
+        previewWrap.classList.remove("dragging");
+    } else if (state.preview.activePointers.size === 1) {
+        const remaining = [...state.preview.activePointers.values()][0];
+        state.preview.dragStart = {
+            x: remaining.x,
+            y: remaining.y,
+            cameraX: state.preview.cameraX,
+            cameraY: state.preview.cameraY
+        };
+        state.preview.pinchStart = null;
+        previewWrap.classList.add("dragging");
+    }
+}
+
+previewWrap.addEventListener("pointerup", releasePreviewPointer);
+previewWrap.addEventListener("pointercancel", releasePreviewPointer);
+previewWrap.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "mouse") releasePreviewPointer(event);
+});
+
+async function loadStatus() {
+    const response = await fetch("/api/status", { cache: "no-store" });
+    state.latestStatus = await response.json();
+
+    if (!state.languageInitialized) {
+        state.currentLang = state.latestStatus.config.ui_settings?.default_language || "en";
+        state.languageInitialized = true;
+    }
+
+    document.getElementById("languageSelect").value = state.currentLang;
+    applyLanguage();
+
+    document.getElementById("playerCount").textContent = String(state.latestStatus.player_count);
+    document.getElementById("updatedAt").textContent = formatTime(state.latestStatus.updated_at);
+
+    const statusText = document.getElementById("statusText");
+    if (state.latestStatus.last_error) {
+        statusText.textContent = state.latestStatus.last_error;
+        statusText.className = "value bad";
+    } else {
+        statusText.textContent = t("statusOk");
+        statusText.className = "value good";
+    }
+
+    setForm(state.latestStatus.config);
+    renderLink(state.latestStatus.links || {});
+    renderPlayers(state.latestStatus.players || []);
+    renderActivity(state.latestStatus.connection_events || []);
+    renderLogs(state.latestStatus.logs || []);
+
+    const nextSignature = getPreviewMapSignature(state.latestStatus.config);
+    const mapChanged = nextSignature !== state.preview.mapSignature;
+    state.preview.mapSignature = nextSignature;
+    state.preview.map = {
+        world_bounds: state.latestStatus.config.world_bounds,
+        layers: state.latestStatus.config.map_layers || []
+    };
+
+    if (!state.preview.initialized || mapChanged) {
+        centerPreviewOnTracked();
+        state.preview.initialized = true;
+    } else if (state.trackedSteamId) {
+        const tracked = (state.latestStatus.players || []).find((player) => player.steamid === state.trackedSteamId);
+        if (tracked) {
+            state.preview.cameraX = tracked.position.x;
+            state.preview.cameraY = tracked.position.y;
+        }
+    }
+
+    renderPreview();
+}
+
+async function saveConfig() {
+    const payload = {
+        rest_password: restPasswordInput.value,
+        poll_interval_seconds: Number(pollIntervalInput.value),
+        history_limit: Number(historyLimitInput.value),
+        ui_settings: {
+            default_language: state.currentLang
+        }
+    };
+
+    const response = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    const saveStatus = document.getElementById("saveStatus");
+    if (!response.ok) {
+        saveStatus.textContent = `${t("failed")} (${response.status})`;
+        return;
+    }
+    state.settingDirty = false;
+    saveStatus.textContent = t("saved");
+    await loadStatus();
+}
+
+document.getElementById("applyButton").addEventListener("click", saveConfig);
+document.getElementById("languageSelect").addEventListener("change", (event) => {
+    state.currentLang = event.target.value;
+    applyLanguage();
+    document.getElementById("saveStatus").textContent = "";
+});
+
+window.addEventListener("resize", renderPreview);
+
+applyLanguage();
+loadStatus();
+setInterval(loadStatus, 3000);
+</script>
+</body>
+</html>
+

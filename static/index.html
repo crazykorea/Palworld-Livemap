@@ -1,0 +1,1242 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Palworld Live Map</title>
+<style>
+:root {
+    --bg-top: #0d151b;
+    --bg-mid: #0d161d;
+    --bg-bottom: #0d161e;
+    --panel: rgba(11, 18, 25, 0.86);
+    --panel-strong: rgba(10, 16, 23, 0.92);
+    --border: rgba(133, 160, 182, 0.12);
+    --text: #eef5fb;
+    --muted: #9db0bf;
+    --credit: rgba(144, 154, 166, 0.48);
+}
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    color: var(--text);
+    font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+    background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 42%, var(--bg-bottom) 100%);
+}
+body { position: relative; }
+#app, #viewport {
+    width: 100%;
+    height: 100%;
+}
+#viewport {
+    position: relative;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+}
+#viewport.dragging { cursor: grabbing; }
+#mapCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+#playerLayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+.tag-line {
+    position: absolute;
+    height: 2px;
+    transform-origin: left center;
+    background: currentColor;
+    opacity: 0.92;
+}
+.player-tag {
+    position: absolute;
+    min-width: 96px;
+    max-width: 170px;
+    padding: 7px 12px 8px;
+    border-radius: 10px;
+    border: 2px solid currentColor;
+    background: rgba(34, 40, 47, 0.96);
+    color: inherit;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.15;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34);
+    text-align: left;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+.player-tag.tracked {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.16), 0 12px 26px rgba(0, 0, 0, 0.42);
+}
+.player-tag::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 10px solid currentColor;
+    transform: translateX(-50%);
+}
+.player-tag::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -7px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid rgba(34, 40, 47, 0.96);
+    transform: translateX(-50%);
+    z-index: 1;
+}
+.player-name { display: block; }
+.player-level, .player-coord {
+    opacity: 0.88;
+    font-size: 12px;
+    margin-top: 2px;
+}
+#sidebar {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    bottom: 16px;
+    width: 308px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 16px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(16px);
+    transition: transform 0.24s ease, opacity 0.24s ease;
+    z-index: 20;
+}
+#sidebar.closed {
+    transform: translateX(calc(-100% - 22px));
+    opacity: 0.96;
+}
+.sidebar-top {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+.sidebar-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+.sidebar-subtitle {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+.lang {
+    margin-left: auto;
+    width: 128px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(10, 18, 27, 0.9);
+    color: var(--text);
+    padding: 9px 11px;
+}
+#panelToggle {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    z-index: 25;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(8, 15, 26, 0.9);
+    color: var(--text);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.32);
+    padding: 10px 14px;
+    font-weight: 700;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+}
+#sidebar:not(.closed) + #panelToggle {
+    left: 340px;
+}
+.status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.status-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+}
+.status-label { color: var(--muted); }
+.status-value.online { color: #78f0a5; }
+.status-value.offline { color: #ff8f8f; }
+.tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.tab {
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.05);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.tab.active {
+    background: rgba(114, 202, 251, 0.14);
+    color: var(--text);
+}
+.tab-panel {
+    display: none;
+    min-height: 0;
+}
+.tab-panel.active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+#playerList, #activityList {
+    flex: 1;
+    overflow: auto;
+    padding-right: 4px;
+}
+.list-note {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 8px 0 10px;
+    line-height: 1.5;
+}
+.player-row, .activity-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 12px 10px;
+    border: 0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    text-align: left;
+}
+.player-row {
+    cursor: pointer;
+    transition: transform 0.16s ease, background 0.16s ease;
+}
+.player-row:hover {
+    transform: translateX(3px);
+    background: rgba(255, 255, 255, 0.08);
+}
+.player-row.tracked {
+    background: rgba(114, 202, 251, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(114, 202, 251, 0.18);
+}
+.player-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
+}
+.player-meta, .activity-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+.player-meta strong,
+.player-meta span,
+.activity-meta strong,
+.activity-meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.player-meta span,
+.activity-meta span {
+    color: var(--muted);
+    font-size: 12px;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+}
+.join { background: rgba(125,241,171,0.12); color: #7df1ab; }
+.leave { background: rgba(255,143,143,0.12); color: #ff8f8f; }
+#emptyState, #activityEmpty {
+    display: none;
+    margin-top: 8px;
+    padding: 16px 12px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.035);
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+#errorBanner {
+    display: none;
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    max-width: min(520px, calc(100vw - 32px));
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(88, 10, 15, 0.92);
+    border: 1px solid rgba(255, 102, 102, 0.28);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+    z-index: 20;
+    font-size: 13px;
+    line-height: 1.45;
+}
+#trackingBadge {
+    display: none;
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    z-index: 22;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(10, 18, 27, 0.88);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 16px 36px rgba(0,0,0,0.24);
+    font-size: 12px;
+    font-weight: 700;
+}
+#trackingBadge button {
+    margin-left: 10px;
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.sidebar-credit {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    color: var(--credit);
+    font-size: 11px;
+    line-height: 1.5;
+}
+.sidebar-credit a {
+    color: rgba(149, 161, 177, 0.58);
+    text-decoration: none;
+}
+@media (max-width: 860px) {
+    #sidebar {
+        top: auto;
+        width: min(344px, calc(100vw - 24px));
+        height: min(64vh, 520px);
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        border-radius: 18px;
+    }
+    #sidebar.closed { transform: translateY(calc(100% + 22px)); }
+    #panelToggle {
+        top: 12px;
+        left: 12px !important;
+    }
+    .player-tag {
+        min-width: 84px;
+        padding: 6px 10px 7px;
+        font-size: 13px;
+    }
+    #errorBanner {
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        max-width: none;
+    }
+    #trackingBadge {
+        left: 12px;
+        right: 12px;
+        top: 12px;
+    }
+}
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="viewport">
+        <canvas id="mapCanvas"></canvas>
+        <div id="playerLayer"></div>
+    </div>
+
+    <aside id="sidebar">
+        <div class="sidebar-top">
+            <div>
+                <div class="sidebar-title" id="title">Players</div>
+                <div class="sidebar-subtitle" id="subtitle">Click a player to start tracking that player.</div>
+            </div>
+            <select id="languageSelect" class="lang">
+                <option value="en">English</option>
+                <option value="ko">한국어</option>
+                <option value="ja">日本語</option>
+                <option value="es">Español</option>
+                <option value="zh">中文</option>
+            </select>
+        </div>
+
+        <div class="status-card">
+            <div class="status-line">
+                <span class="status-label" id="serverLabel">Server</span>
+                <strong id="serverStatus" class="status-value offline">Offline</strong>
+            </div>
+            <div class="status-line">
+                <span class="status-label" id="onlineLabel">Online</span>
+                <strong id="playerCount">0</strong>
+            </div>
+            <div class="status-line">
+                <span class="status-label" id="updatedLabel">Updated</span>
+                <strong id="updatedAt">-</strong>
+            </div>
+            <div class="status-line">
+                <span class="status-label" id="coordLabel">Coord</span>
+                <strong id="coordSource">-</strong>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="players" id="playersTab">Players</button>
+            <button class="tab" data-tab="activity" id="activityTab">Activity</button>
+        </div>
+
+        <div id="playersPanel" class="tab-panel active">
+            <div class="list-note" id="playersNote">Click a player to begin camera tracking.</div>
+            <div id="playerList"></div>
+            <div id="emptyState">No players are currently connected.</div>
+        </div>
+
+        <div id="activityPanel" class="tab-panel">
+            <div class="list-note" id="activityNote">Join and leave records detected from the player poller.</div>
+            <div id="activityList"></div>
+            <div id="activityEmpty">No join or leave records yet.</div>
+        </div>
+
+        <div class="sidebar-credit">
+            <a href="https://discordapp.com/users/368651440396173312" target="_blank" rel="noreferrer">Made by 4zr</a><br>
+            <a href="https://github.com/crazykorea" target="_blank" rel="noreferrer">https://github.com/crazykorea</a><br>
+            CC0 1.0 Universal
+        </div>
+    </aside>
+
+    <button id="panelToggle" type="button">Hide</button>
+    <div id="trackingBadge"><span id="trackingText"></span><button id="trackingClear" type="button">Stop</button></div>
+    <div id="errorBanner"></div>
+</div>
+
+<script>
+const i18n = {
+    en: {
+        title: "Players",
+        subtitle: "Click a player to start tracking that player.",
+        serverLabel: "Server",
+        onlineLabel: "Online",
+        updatedLabel: "Updated",
+        coordLabel: "Coord",
+        playersTab: "Players",
+        activityTab: "Activity",
+        playersNote: "Click a player to begin camera tracking.",
+        activityNote: "Join and leave records detected from the player poller.",
+        emptyPlayers: "No players are currently connected.",
+        emptyActivity: "No join or leave records yet.",
+        onlineStatus: "Online",
+        offlineStatus: "Offline",
+        join: "Joined",
+        leave: "Left",
+        hide: "Hide",
+        show: "Players",
+        level: "Lv",
+        coord: "Coord",
+        trackingPrefix: "Tracking",
+        stop: "Stop"
+    },
+    ko: {
+        title: "플레이어",
+        subtitle: "플레이어를 클릭하면 해당 플레이어를 추적합니다.",
+        serverLabel: "서버",
+        onlineLabel: "온라인",
+        updatedLabel: "업데이트됨",
+        coordLabel: "코디네이터",
+        playersTab: "플레이어",
+        activityTab: "활동",
+        playersNote: "플레이어를 클릭하면 카메라가 해당 플레이어를 계속 따라갑니다.",
+        activityNote: "플레이어 감지를 통해 기록된 접속 및 퇴장 로그입니다.",
+        emptyPlayers: "현재 접속 중인 플레이어가 없습니다.",
+        emptyActivity: "아직 접속 기록이 없습니다.",
+        onlineStatus: "온라인",
+        offlineStatus: "오프라인",
+        join: "접속",
+        leave: "퇴장",
+        hide: "숨다",
+        show: "플레이어",
+        level: "Lv",
+        coord: "좌표",
+        trackingPrefix: "추적 중",
+        stop: "해제"
+    },
+    ja: {
+        title: "プレイヤー",
+        subtitle: "プレイヤーをクリックすると、そのプレイヤーを追跡します。",
+        serverLabel: "サーバー",
+        onlineLabel: "オンライン",
+        updatedLabel: "更新",
+        coordLabel: "座標",
+        playersTab: "プレイヤー",
+        activityTab: "活動",
+        playersNote: "プレイヤーをクリックすると、カメラがそのプレイヤーを追跡します。",
+        activityNote: "プレイヤーポーラーで検出した参加と退出の記録です。",
+        emptyPlayers: "現在接続中のプレイヤーはいません。",
+        emptyActivity: "まだ接続記録はありません。",
+        onlineStatus: "オンライン",
+        offlineStatus: "オフライン",
+        join: "参加",
+        leave: "退出",
+        hide: "隠す",
+        show: "プレイヤー",
+        level: "Lv",
+        coord: "座標",
+        trackingPrefix: "追跡中",
+        stop: "停止"
+    },
+    es: {
+        title: "Jugadores",
+        subtitle: "Haz clic en un jugador para seguir su posicion.",
+        serverLabel: "Servidor",
+        onlineLabel: "En línea",
+        updatedLabel: "Actualizado",
+        coordLabel: "Coord",
+        playersTab: "Jugadores",
+        activityTab: "Actividad",
+        playersNote: "Haz clic en un jugador para que la camara lo siga.",
+        activityNote: "Registros de entrada y salida detectados por el sondeo.",
+        emptyPlayers: "No hay jugadores conectados.",
+        emptyActivity: "Todavía no hay registros de actividad.",
+        onlineStatus: "En línea",
+        offlineStatus: "Desconectado",
+        join: "Entró",
+        leave: "Salió",
+        hide: "Ocultar",
+        show: "Jugadores",
+        level: "Nv",
+        coord: "Coord",
+        trackingPrefix: "Siguiendo",
+        stop: "Detener"
+    },
+    zh: {
+        title: "玩家",
+        subtitle: "点击玩家后，镜头会持续追踪该玩家。",
+        serverLabel: "服务器",
+        onlineLabel: "在线",
+        updatedLabel: "更新时间",
+        coordLabel: "坐标",
+        playersTab: "玩家",
+        activityTab: "活动",
+        playersNote: "点击玩家后，镜头会自动跟随该玩家。",
+        activityNote: "通过轮询检测到的加入与离开记录。",
+        emptyPlayers: "当前没有在线玩家。",
+        emptyActivity: "目前还没有连接记录。",
+        onlineStatus: "在线",
+        offlineStatus: "离线",
+        join: "加入",
+        leave: "离开",
+        hide: "隐藏",
+        show: "玩家",
+        level: "Lv",
+        coord: "坐标",
+        trackingPrefix: "追踪中",
+        stop: "停止"
+    }
+};
+
+const state = {
+    players: [],
+    activity: [],
+    map: {
+        background: "#0d151b",
+        world_bounds: { min_x: -2200, max_x: 1200, min_y: -2200, max_y: 1800 },
+        layers: [],
+    },
+    cameraX: -500,
+    cameraY: -200,
+    zoom: 1,
+    minZoom: 1,
+    maxZoom: 4,
+    panelOpen: window.innerWidth > 860,
+    fetchTimer: null,
+    isDragging: false,
+    dragStart: null,
+    activePointers: new Map(),
+    pinchStart: null,
+    userMovedCamera: false,
+    hasAutoFramed: false,
+    pendingRender: false,
+    lastCoordSource: "-",
+    imageCache: new Map(),
+    activeTab: "players",
+    currentLang: "en",
+    trackedSteamId: null,
+};
+
+const viewport = document.getElementById("viewport");
+const canvas = document.getElementById("mapCanvas");
+const ctx = canvas.getContext("2d");
+const playerLayer = document.getElementById("playerLayer");
+const sidebar = document.getElementById("sidebar");
+const panelToggle = document.getElementById("panelToggle");
+const playerList = document.getElementById("playerList");
+const activityList = document.getElementById("activityList");
+const emptyState = document.getElementById("emptyState");
+const activityEmpty = document.getElementById("activityEmpty");
+const serverStatus = document.getElementById("serverStatus");
+const playerCount = document.getElementById("playerCount");
+const updatedAt = document.getElementById("updatedAt");
+const coordSource = document.getElementById("coordSource");
+const errorBanner = document.getElementById("errorBanner");
+const trackingBadge = document.getElementById("trackingBadge");
+const trackingText = document.getElementById("trackingText");
+const trackingClear = document.getElementById("trackingClear");
+
+function t(key) {
+    return i18n[state.currentLang]?.[key] || key;
+}
+
+function applyLanguage() {
+    document.documentElement.lang = state.currentLang;
+    document.getElementById("title").textContent = t("title");
+    document.getElementById("subtitle").textContent = t("subtitle");
+    document.getElementById("serverLabel").textContent = t("serverLabel");
+    document.getElementById("onlineLabel").textContent = t("onlineLabel");
+    document.getElementById("updatedLabel").textContent = t("updatedLabel");
+    document.getElementById("coordLabel").textContent = t("coordLabel");
+    document.getElementById("playersTab").textContent = t("playersTab");
+    document.getElementById("activityTab").textContent = t("activityTab");
+    document.getElementById("playersNote").textContent = t("playersNote");
+    document.getElementById("activityNote").textContent = t("activityNote");
+    emptyState.textContent = t("emptyPlayers");
+    activityEmpty.textContent = t("emptyActivity");
+    panelToggle.textContent = state.panelOpen ? t("hide") : t("show");
+    trackingClear.textContent = t("stop");
+    renderPlayerList();
+    renderActivityList();
+    renderStatus();
+    renderTrackingBadge();
+}
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
+
+function getWorldWidth() {
+    return state.map.world_bounds.max_x - state.map.world_bounds.min_x;
+}
+
+function getWorldHeight() {
+    return state.map.world_bounds.max_y - state.map.world_bounds.min_y;
+}
+
+function getExpandedBounds() {
+    const width = getWorldWidth();
+    const height = getWorldHeight();
+    return {
+        min_x: state.map.world_bounds.min_x - (width * 0.3),
+        max_x: state.map.world_bounds.max_x + (width * 0.3),
+        min_y: state.map.world_bounds.min_y - (height * 0.3),
+        max_y: state.map.world_bounds.max_y + (height * 0.3),
+    };
+}
+
+function worldToScreen(position) {
+    const viewportRect = viewport.getBoundingClientRect();
+    return {
+        x: (position.x - state.cameraX) * state.zoom + viewportRect.width / 2,
+        y: (state.cameraY - position.y) * state.zoom + viewportRect.height / 2,
+    };
+}
+
+function screenToWorld(screenX, screenY) {
+    const viewportRect = viewport.getBoundingClientRect();
+    return {
+        x: state.cameraX + ((screenX - viewportRect.width / 2) / state.zoom),
+        y: state.cameraY - ((screenY - viewportRect.height / 2) / state.zoom),
+    };
+}
+
+function scheduleRender() {
+    if (state.pendingRender) return;
+    state.pendingRender = true;
+    window.requestAnimationFrame(() => {
+        state.pendingRender = false;
+        renderAll();
+    });
+}
+
+function resizeCanvas() {
+    const rect = viewport.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(rect.width * ratio));
+    const height = Math.max(1, Math.round(rect.height * ratio));
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+    }
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+
+function applyZoomBounds() {
+    const viewportRect = viewport.getBoundingClientRect();
+    const minZoom = Math.min(
+        viewportRect.width / Math.max(1, getWorldWidth()),
+        viewportRect.height / Math.max(1, getWorldHeight())
+    );
+    state.minZoom = minZoom;
+    state.maxZoom = minZoom * 16;
+    state.zoom = clamp(state.zoom, state.minZoom, state.maxZoom);
+}
+
+function clampCamera() {
+    const viewportRect = viewport.getBoundingClientRect();
+    const bounds = getExpandedBounds();
+    const halfWorldWidth = viewportRect.width / (2 * state.zoom);
+    const halfWorldHeight = viewportRect.height / (2 * state.zoom);
+    const totalWidth = bounds.max_x - bounds.min_x;
+    const totalHeight = bounds.max_y - bounds.min_y;
+
+    if (halfWorldWidth >= totalWidth / 2) {
+        state.cameraX = (bounds.min_x + bounds.max_x) / 2;
+    } else {
+        state.cameraX = clamp(state.cameraX, bounds.min_x + halfWorldWidth, bounds.max_x - halfWorldWidth);
+    }
+
+    if (halfWorldHeight >= totalHeight / 2) {
+        state.cameraY = (bounds.min_y + bounds.max_y) / 2;
+    } else {
+        state.cameraY = clamp(state.cameraY, bounds.min_y + halfWorldHeight, bounds.max_y - halfWorldHeight);
+    }
+}
+
+function ensureLayerImage(layer) {
+    if (state.imageCache.has(layer.image_url)) {
+        return state.imageCache.get(layer.image_url);
+    }
+    const image = new Image();
+    image.decoding = "async";
+    image.src = layer.image_url;
+    image.addEventListener("load", scheduleRender);
+    state.imageCache.set(layer.image_url, image);
+    return image;
+}
+
+function fillBackground(rect) {
+    const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
+    gradient.addColorStop(0, "#0d151b");
+    gradient.addColorStop(0.52, "#0d161d");
+    gradient.addColorStop(1, "#0d161e");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, rect.width, rect.height);
+}
+
+function drawMapLayers() {
+    const rect = viewport.getBoundingClientRect();
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    fillBackground(rect);
+
+    for (const layer of state.map.layers) {
+        const image = ensureLayerImage(layer);
+        if (!image.complete || !image.naturalWidth) continue;
+        const transform = layer.image_to_world;
+        ctx.setTransform(
+            state.zoom * transform.a,
+            state.zoom * (-transform.d),
+            state.zoom * transform.b,
+            state.zoom * (-transform.e),
+            state.zoom * (transform.c - state.cameraX) + rect.width / 2,
+            state.zoom * (state.cameraY - transform.f) + rect.height / 2
+        );
+        ctx.drawImage(image, 0, 0, layer.image_width, layer.image_height);
+    }
+    ctx.restore();
+}
+
+function drawPaths() {
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (const player of state.players) {
+        const history = Array.isArray(player.history) ? player.history : [];
+        if (history.length < 2) continue;
+        for (let i = 1; i < history.length; i += 1) {
+            const prev = worldToScreen(history[i - 1]);
+            const current = worldToScreen(history[i]);
+            const ratio = i / (history.length - 1);
+            ctx.strokeStyle = player.color;
+            ctx.globalAlpha = 0.16 + (ratio * 0.76);
+            ctx.lineWidth = 1.4 + (ratio * 4.6);
+            ctx.beginPath();
+            ctx.moveTo(prev.x, prev.y);
+            ctx.lineTo(current.x, current.y);
+            ctx.stroke();
+        }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+}
+
+function resolveLabelCollisions(entries) {
+    const placed = [];
+    const viewportRect = viewport.getBoundingClientRect();
+    const result = [];
+    entries.sort((a, b) => a.screen.y - b.screen.y);
+
+    for (const entry of entries) {
+        let left = entry.screen.x - (entry.size.width / 2);
+        let top = entry.screen.y - entry.size.height - 16;
+        left = clamp(left, 8, viewportRect.width - entry.size.width - 8);
+
+        for (let i = 0; i < 12; i += 1) {
+            const rect = {
+                left,
+                top,
+                right: left + entry.size.width,
+                bottom: top + entry.size.height + 10,
+            };
+            const collision = placed.find((other) => {
+                return !(
+                    rect.right < other.left ||
+                    rect.left > other.right ||
+                    rect.bottom < other.top ||
+                    rect.top > other.bottom
+                );
+            });
+            if (!collision) {
+                placed.push(rect);
+                result.push({ ...entry, left, top });
+                break;
+            }
+            top = collision.top - entry.size.height - 18;
+            if (top < 8) top = collision.bottom + 14;
+        }
+    }
+    return result;
+}
+
+function renderPlayers() {
+    playerLayer.innerHTML = "";
+    const measureEntries = [];
+    for (const player of state.players) {
+        const screen = worldToScreen(player.position);
+        const viewportRect = viewport.getBoundingClientRect();
+        if (screen.x < -260 || screen.x > viewportRect.width + 260 || screen.y < -180 || screen.y > viewportRect.height + 180) {
+            continue;
+        }
+        const tag = document.createElement("div");
+        tag.className = `player-tag${player.steamid === state.trackedSteamId ? " tracked" : ""}`;
+        tag.style.color = player.color;
+        tag.innerHTML = `
+            <span class="player-name">${escapeHtml(player.name)}</span>
+            <span class="player-level">${t("level")} ${escapeHtml(String(player.level ?? 0))}</span>
+            <span class="player-coord">${formatCoord(player.position)}</span>
+        `;
+        playerLayer.appendChild(tag);
+        const bounds = tag.getBoundingClientRect();
+        measureEntries.push({
+            node: tag,
+            screen,
+            player,
+            size: { width: bounds.width, height: bounds.height }
+        });
+    }
+    for (const entry of resolveLabelCollisions(measureEntries)) {
+        const tipX = entry.left + (entry.size.width / 2);
+        const tipY = entry.top + entry.size.height + 3;
+        const deltaX = entry.screen.x - tipX;
+        const deltaY = entry.screen.y - tipY;
+        const line = document.createElement("div");
+        line.className = "tag-line";
+        line.style.color = entry.player.color;
+        line.style.left = `${tipX}px`;
+        line.style.top = `${tipY}px`;
+        line.style.width = `${Math.hypot(deltaX, deltaY)}px`;
+        line.style.transform = `rotate(${Math.atan2(deltaY, deltaX)}rad)`;
+        playerLayer.appendChild(line);
+        entry.node.style.left = `${entry.left}px`;
+        entry.node.style.top = `${entry.top}px`;
+    }
+}
+
+function formatTimestamp(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function renderStatus() {
+    const online = !state.lastError;
+    serverStatus.textContent = online ? t("onlineStatus") : t("offlineStatus");
+    serverStatus.className = `status-value ${online ? "online" : "offline"}`;
+    playerCount.textContent = String(state.players.length);
+    updatedAt.textContent = state.updatedAt ? formatTimestamp(state.updatedAt) : "-";
+    coordSource.textContent = state.lastCoordSource;
+}
+
+function renderPlayerList() {
+    playerList.innerHTML = "";
+    if (!state.players.length) {
+        emptyState.style.display = "block";
+        return;
+    }
+    emptyState.style.display = "none";
+    const fragment = document.createDocumentFragment();
+    for (const player of state.players) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `player-row${player.steamid === state.trackedSteamId ? " tracked" : ""}`;
+        button.innerHTML = `
+            <span class="player-swatch" style="background:${player.color}"></span>
+            <span class="player-meta">
+                <strong>${escapeHtml(player.name)}</strong>
+                <span>${t("level")} ${escapeHtml(String(player.level ?? 0))} · ${formatCoord(player.position)}</span>
+            </span>
+        `;
+        button.addEventListener("click", () => trackPlayer(player));
+        fragment.appendChild(button);
+    }
+    playerList.appendChild(fragment);
+}
+
+function renderActivityList() {
+    activityList.innerHTML = "";
+    if (!state.activity.length) {
+        activityEmpty.style.display = "block";
+        return;
+    }
+    activityEmpty.style.display = "none";
+    const fragment = document.createDocumentFragment();
+    for (const item of state.activity) {
+        const row = document.createElement("div");
+        row.className = "activity-row";
+        row.innerHTML = `
+            <span class="activity-meta">
+                <strong>${escapeHtml(item.name)}</strong>
+                <span>${formatTimestamp(item.time)}</span>
+            </span>
+            <span class="badge ${item.type}">${t(item.type)}</span>
+        `;
+        fragment.appendChild(row);
+    }
+    activityList.appendChild(fragment);
+}
+
+function renderTrackingBadge() {
+    if (!state.trackedSteamId) {
+        trackingBadge.style.display = "none";
+        return;
+    }
+    const player = state.players.find((item) => item.steamid === state.trackedSteamId);
+    if (!player) {
+        state.trackedSteamId = null;
+        trackingBadge.style.display = "none";
+        return;
+    }
+    trackingText.textContent = `${t("trackingPrefix")}: ${player.name}`;
+    trackingBadge.style.display = "block";
+}
+
+function renderAll() {
+    resizeCanvas();
+    clampCamera();
+    drawMapLayers();
+    drawPaths();
+    renderPlayers();
+    renderPlayerList();
+    renderActivityList();
+    renderStatus();
+    renderTrackingBadge();
+}
+
+function trackPlayer(player) {
+    state.trackedSteamId = player.steamid;
+    state.cameraX = player.position.x;
+    state.cameraY = player.position.y;
+    state.zoom = clamp(Math.max(state.zoom, state.minZoom * 2.4), state.minZoom, state.maxZoom);
+    state.userMovedCamera = true;
+    scheduleRender();
+}
+
+function clearTracking() {
+    state.trackedSteamId = null;
+    renderTrackingBadge();
+    renderPlayerList();
+    renderPlayers();
+}
+
+function fitPlayers(players) {
+    if (!players.length) return;
+    const xs = players.map((p) => p.position.x);
+    const ys = players.map((p) => p.position.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const viewportRect = viewport.getBoundingClientRect();
+    const padding = 160;
+    const width = Math.max(220, maxX - minX);
+    const height = Math.max(180, maxY - minY);
+    const zoomX = viewportRect.width / (width + padding);
+    const zoomY = viewportRect.height / (height + padding);
+    state.cameraX = (minX + maxX) / 2;
+    state.cameraY = (minY + maxY) / 2;
+    state.zoom = clamp(Math.min(zoomX, zoomY), state.minZoom, state.maxZoom);
+}
+
+function setPanelOpen(open) {
+    state.panelOpen = open;
+    sidebar.classList.toggle("closed", !open);
+    panelToggle.textContent = open ? t("hide") : t("show");
+}
+
+function setTab(tab) {
+    state.activeTab = tab;
+    for (const button of document.querySelectorAll(".tab")) {
+        button.classList.toggle("active", button.dataset.tab === tab);
+    }
+    document.getElementById("playersPanel").classList.toggle("active", tab === "players");
+    document.getElementById("activityPanel").classList.toggle("active", tab === "activity");
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function formatCoord(position) {
+    return `${t("coord")} ${Math.round(position.x)}, ${Math.round(position.y)}`;
+}
+
+function updateTrackedPlayerFromPayload() {
+    if (!state.trackedSteamId) return;
+    const tracked = state.players.find((player) => player.steamid === state.trackedSteamId);
+    if (!tracked) {
+        state.trackedSteamId = null;
+        return;
+    }
+    state.cameraX = tracked.position.x;
+    state.cameraY = tracked.position.y;
+}
+
+function applyPayload(payload) {
+    if (payload.map) {
+        state.map = payload.map;
+        state.lastCoordSource = payload.players?.[0]?.coordinate_source || "map";
+    }
+    state.players = Array.isArray(payload.players) ? payload.players : [];
+    state.activity = Array.isArray(payload.connection_events) ? payload.connection_events : [];
+    state.updatedAt = payload.updated_at;
+    state.lastError = payload.error || "";
+    applyZoomBounds();
+
+    if (state.trackedSteamId) {
+        updateTrackedPlayerFromPayload();
+    } else if (!state.userMovedCamera) {
+        if (state.players.length && !state.hasAutoFramed) {
+            fitPlayers(state.players);
+            state.hasAutoFramed = true;
+        } else if (!state.hasAutoFramed) {
+            state.cameraX = (state.map.world_bounds.min_x + state.map.world_bounds.max_x) / 2;
+            state.cameraY = (state.map.world_bounds.min_y + state.map.world_bounds.max_y) / 2;
+            state.zoom = state.minZoom;
+            state.hasAutoFramed = true;
+        }
+    }
+    scheduleRender();
+}
+
+async function fetchPlayers() {
+    try {
+        const response = await fetch("/api/players", { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        applyPayload(payload);
+        errorBanner.style.display = "none";
+        const nextDelay = Math.max(3000, Number(payload.poll_interval || 10) * 1000);
+        scheduleFetch(nextDelay);
+    } catch (error) {
+        errorBanner.style.display = "block";
+        errorBanner.textContent = `Live Map error: ${error.message}`;
+        scheduleFetch(5000);
+    }
+}
+
+function scheduleFetch(delay) {
+    window.clearTimeout(state.fetchTimer);
+    state.fetchTimer = window.setTimeout(fetchPlayers, delay);
+}
+
+function zoomAt(clientX, clientY, nextZoom) {
+    const viewportRect = viewport.getBoundingClientRect();
+    const localX = clientX - viewportRect.left;
+    const localY = clientY - viewportRect.top;
+    const anchor = screenToWorld(localX, localY);
+    state.zoom = clamp(nextZoom, state.minZoom, state.maxZoom);
+    state.cameraX = anchor.x - ((localX - viewportRect.width / 2) / state.zoom);
+    state.cameraY = anchor.y + ((localY - viewportRect.height / 2) / state.zoom);
+    state.userMovedCamera = true;
+    scheduleRender();
+}
+
+viewport.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.12 : 0.9;
+    zoomAt(event.clientX, event.clientY, state.zoom * factor);
+}, { passive: false });
+
+viewport.addEventListener("pointerdown", (event) => {
+    viewport.setPointerCapture(event.pointerId);
+    state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (state.activePointers.size === 1) {
+        state.isDragging = true;
+        viewport.classList.add("dragging");
+        state.dragStart = { x: event.clientX, y: event.clientY, cameraX: state.cameraX, cameraY: state.cameraY };
+    } else if (state.activePointers.size === 2) {
+        const points = [...state.activePointers.values()];
+        state.isDragging = false;
+        viewport.classList.remove("dragging");
+        state.pinchStart = {
+            centerX: (points[0].x + points[1].x) / 2,
+            centerY: (points[0].y + points[1].y) / 2,
+            distance: Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y),
+            zoom: state.zoom,
+            cameraX: state.cameraX,
+            cameraY: state.cameraY,
+        };
+    }
+});
+
+viewport.addEventListener("pointermove", (event) => {
+    if (!state.activePointers.has(event.pointerId)) return;
+    state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (state.activePointers.size === 1 && state.isDragging && state.dragStart) {
+        const deltaX = event.clientX - state.dragStart.x;
+        const deltaY = event.clientY - state.dragStart.y;
+        state.cameraX = state.dragStart.cameraX - (deltaX / state.zoom);
+        state.cameraY = state.dragStart.cameraY + (deltaY / state.zoom);
+        state.userMovedCamera = true;
+        state.trackedSteamId = null;
+        scheduleRender();
+        return;
+    }
+
+    if (state.activePointers.size === 2 && state.pinchStart) {
+        const points = [...state.activePointers.values()];
+        const centerX = (points[0].x + points[1].x) / 2;
+        const centerY = (points[0].y + points[1].y) / 2;
+        const distance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y) || 1;
+        const ratio = distance / Math.max(1, state.pinchStart.distance);
+        const nextZoom = state.pinchStart.zoom * ratio;
+        state.cameraX = state.pinchStart.cameraX;
+        state.cameraY = state.pinchStart.cameraY;
+        state.zoom = state.pinchStart.zoom;
+        state.userMovedCamera = true;
+        zoomAt(centerX, centerY, nextZoom);
+    }
+});
+
+function releasePointer(event) {
+    state.activePointers.delete(event.pointerId);
+    if (state.activePointers.size === 0) {
+        state.isDragging = false;
+        state.dragStart = null;
+        state.pinchStart = null;
+        viewport.classList.remove("dragging");
+    } else if (state.activePointers.size === 1) {
+        const remaining = [...state.activePointers.values()][0];
+        state.isDragging = true;
+        state.dragStart = { x: remaining.x, y: remaining.y, cameraX: state.cameraX, cameraY: state.cameraY };
+        state.pinchStart = null;
+    }
+}
+
+viewport.addEventListener("pointerup", releasePointer);
+viewport.addEventListener("pointercancel", releasePointer);
+viewport.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "mouse") releasePointer(event);
+});
+
+panelToggle.addEventListener("click", () => setPanelOpen(!state.panelOpen));
+trackingClear.addEventListener("click", clearTracking);
+document.getElementById("languageSelect").addEventListener("change", (event) => {
+    state.currentLang = event.target.value;
+    applyLanguage();
+});
+for (const tab of document.querySelectorAll(".tab")) {
+    tab.addEventListener("click", () => setTab(tab.dataset.tab));
+}
+
+window.addEventListener("resize", () => {
+    applyZoomBounds();
+    if (!state.userMovedCamera && state.players.length) fitPlayers(state.players);
+    scheduleRender();
+});
+
+function initialize() {
+    setPanelOpen(state.panelOpen);
+    setTab("players");
+    resizeCanvas();
+    applyZoomBounds();
+    state.cameraX = (state.map.world_bounds.min_x + state.map.world_bounds.max_x) / 2;
+    state.cameraY = (state.map.world_bounds.min_y + state.map.world_bounds.max_y) / 2;
+    state.zoom = state.minZoom;
+    applyLanguage();
+    scheduleRender();
+    fetchPlayers();
+}
+
+initialize();
+</script>
+</body>
+</html>
+

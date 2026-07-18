@@ -1,0 +1,18 @@
+Third-Party Notices
+
+This project is an unofficial fan-made tool and is not affiliated with or endorsed by Pocketpair.
+
+1. Palworld-related materials
+
+Palworld-related names, images, maps, and other game-derived assets included in this package are not covered by the CC0 dedication for the original source code. They remain subject to the rights of their respective owners.
+
+2. Python runtime
+
+This package includes a portable Python runtime under the Python Software Foundation License and other included third-party licenses.
+
+Python license reference:
+https://docs.python.org/3/license.html
+
+3. Scope reminder
+
+The CC0 dedication in this repository applies only to original source code and original project assets created by 4zr, to the extent allowed by law.

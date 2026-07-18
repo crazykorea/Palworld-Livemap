@@ -3,18 +3,23 @@ Palworld Live Map Portable
 Made by:
 4zr
 https://github.com/crazykorea
-discord: .4zr
 
-Copyright dedication:
-CC0 1.0 Universal
+CC0 dedication scope:
+CC0 1.0 Universal applies only to the original source code and any original
+project assets created by 4zr for this repository, to the extent allowed by law.
 
-This package is intentionally released under CC0 so it may be copied, modified,
-repackaged, and redistributed without permission, to the extent allowed by law.
+Excluded from the CC0 dedication:
+- Palworld-related names, logos, maps, images, and other game-derived assets
+- Pocketpair trademarks and other third-party rights
+- The bundled portable Python runtime and its included libraries
+- Any other third-party software, content, or dependencies included with this package
 
-Recommended courtesy credit:
+These excluded materials remain subject to their respective owners' rights,
+licenses, and terms.
+
+Courtesy credit if you reuse the original code:
 Made by 4zr
 https://github.com/crazykorea
-discord: .4zr
 
 CC0 reference:
 https://creativecommons.org/publicdomain/zero/1.0/

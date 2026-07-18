@@ -632,19 +632,22 @@ const localizedOverrides = {
         passwordLabel: "Admin password",
         passwordHelp: "Set RESTAPIEnabled=True in PalWorldSettings.ini, then enter the AdminPassword value.",
         shareGuide: "Forward port 5000 in your router settings and allow port 5000 in your firewall.",
-        shareWarning: "Notice: Your public IP is exposed, so direct use on public servers is not recommended. When using this on a public server, use a domain that hides the origin IP through Cloudflare or a similar service, then share it as 'domain:5000'."
+        passwordPlaceholder: "Leave blank to keep current value",
+        shareGuide: "Direct connection only: forward port 5000 on your router and allow port 5000 in your firewall, then share http://PUBLIC_IP:5000.",
+        shareWarning: "For public sharing, use Cloudflare Tunnel or another reverse proxy and share the public URL such as https://map.example.com. Do not expose the admin page through the tunnel or proxy."
     },
     ko: {
         title: "관리자 콘솔",
         settingsTitle: "설정",
         passwordLabel: "관리자 비밀번호",
-        passwordHelp: "PalWorldSettings.ini 내부의 RESTAPIEnabled를 True로 바꾸고, AdminPassword 값을 입력하세요.",
+        passwordHelp: "PalWorldSettings.ini 내부의 RESTAPIEnabled를 True로 바꾸고, 현재 AdminPassword 값을 입력하세요. 비워 두면 현재 저장된 값이 유지됩니다.",
+        passwordPlaceholder: "현재 값을 유지하려면 비워 두세요",
         pollLabel: "갱신 주기(초)",
         historyLabel: "경로 저장 개수",
         applyButton: "적용",
         shareTitle: "공유 링크",
-        shareGuide: "공유기 설정에서 5000 포트를 포트 포워딩하고, 방화벽에서 5000 포트를 예외 설정 해야 합니다.",
-        shareWarning: "주의사항: 공인 IP가 노출되므로 공개 서버에서는 직접 사용을 권장하지 않습니다. 공개 서버에서 사용 시에는 Cloudflare 등으로 원본 IP를 숨긴 도메인을 사용하여 'domain:5000' 형식으로 배포하세요.",
+        shareGuide: "직접 연결 방식에서만 필요합니다. 공유기에서 5000 포트를 포트 포워딩하고, 방화벽에서 5000 포트를 예외 처리한 뒤 http://공인IP:5000 형태로 공유하세요.",
+        shareWarning: "공개 서버에서 공유하려면 Cloudflare Tunnel 또는 다른 리버스 프록시를 사용하고, https://map.example.com 같은 공개 주소를 배포하세요. 관리자 페이지는 터널이나 프록시로 외부에 노출하지 마세요.",
         reveal: "표시",
         hide: "숨기기",
         copy: "복사",
@@ -674,13 +677,14 @@ const localizedOverrides = {
         title: "管理者コンソール",
         settingsTitle: "設定",
         passwordLabel: "管理者パスワード",
-        passwordHelp: "PalWorldSettings.ini 内で RESTAPIEnabled を True に変更し、AdminPassword の値を入力してください。",
+        passwordHelp: "PalWorldSettings.ini で RESTAPIEnabled を True に変更し、現在の AdminPassword を入力してください。空欄のままなら保存済みの値を維持します。",
+        passwordPlaceholder: "現在の値を維持する場合は空欄",
         pollLabel: "更新間隔(秒)",
         historyLabel: "経路保存数",
         applyButton: "適用",
         shareTitle: "共有リンク",
-        shareGuide: "ルーター設定で 5000 ポートをポートフォワーディングし、ファイアウォールでも 5000 ポートを例外として許可してください。",
-        shareWarning: "注意: グローバル IP が公開されるため、公開サーバーでの直接利用は推奨しません。公開サーバーで使用する場合は、Cloudflare などで元の IP を隠したドメインを使い、'domain:5000' の形式で配布してください。",
+        shareGuide: "直接接続方式でのみ必要です。ルーターで 5000 ポートをポートフォワードし、ファイアウォールでも 5000 ポートを許可したうえで http://PUBLIC_IP:5000 を共有してください。",
+        shareWarning: "公開サーバーで共有する場合は Cloudflare Tunnel などのリバースプロキシを利用し、https://map.example.com のような公開 URL を配布してください。管理ページはトンネルやプロキシ経由で公開しないでください。",
         reveal: "表示",
         hide: "隠す",
         copy: "コピー",
@@ -708,21 +712,23 @@ const localizedOverrides = {
     },
     es: {
         passwordLabel: "Contrasena de administrador",
-        passwordHelp: "Cambia RESTAPIEnabled a True en PalWorldSettings.ini y luego introduce el valor de AdminPassword.",
-        shareGuide: "Debes configurar el reenvio del puerto 5000 en tu router y permitir el puerto 5000 en el firewall.",
-        shareWarning: "Aviso: tu IP pública queda expuesta, por lo que no se recomienda el uso directo en servidores públicos. Si vas a usarlo en un servidor público, utiliza un dominio que oculte la IP de origen mediante Cloudflare o un servicio similar y compártelo con el formato 'domain:5000'."
+        passwordHelp: "Cambia RESTAPIEnabled a True en PalWorldSettings.ini y luego introduce el valor actual de AdminPassword. Si lo dejas en blanco, se conservará el valor guardado.",
+        passwordPlaceholder: "Déjalo en blanco para conservar el valor actual",
+        shareGuide: "Solo para conexión directa: abre y redirige el puerto 5000 en tu router y firewall, y comparte http://IP_PUBLICA:5000.",
+        shareWarning: "Para compartirlo en un servidor público, usa Cloudflare Tunnel u otro proxy inverso y comparte la URL pública, por ejemplo https://map.example.com. No expongas la página de administración a través del túnel o proxy."
     },
     zh: {
         title: "管理员控制台",
         settingsTitle: "设置",
         passwordLabel: "管理员密码",
-        passwordHelp: "请先将 PalWorldSettings.ini 中的 RESTAPIEnabled 改为 True，然后输入 AdminPassword 的值。",
+        passwordHelp: "请先将 PalWorldSettings.ini 中的 RESTAPIEnabled 改为 True，然后输入当前的 AdminPassword。留空则保留已保存的值。",
+        passwordPlaceholder: "留空即可保留当前值",
         pollLabel: "刷新周期(秒)",
         historyLabel: "路径保存数量",
         applyButton: "应用",
         shareTitle: "共享链接",
-        shareGuide: "需要在路由器设置中转发 5000 端口，并在防火墙中将 5000 端口设为例外。",
-        shareWarning: "注意：由于会暴露公网 IP，因此不建议在公开服务器中直接使用。若要在公开服务器中使用，请通过 Cloudflare 等服务使用可隐藏源 IP 的域名，并以 'domain:5000' 的形式发布。",
+        shareGuide: "仅限直连方式：在路由器和防火墙中放行并转发 5000 端口，然后分享 http://公网IP:5000。",
+        shareWarning: "如果要在公开服务器中分享，请使用 Cloudflare Tunnel 或其他反向代理，并分享类似 https://map.example.com 的公开地址。不要通过隧道或代理暴露管理员页面。",
         reveal: "显示",
         hide: "隐藏",
         copy: "复制",
@@ -777,6 +783,7 @@ function applyLanguage() {
     for (const id of textIds) {
         document.getElementById(id).textContent = t(id);
     }
+    restPasswordInput.placeholder = t("passwordPlaceholder");
     renderLink(state.latestStatus?.links || {});
     renderPlayers(state.latestStatus?.players || []);
     renderActivity(state.latestStatus?.connection_events || []);
@@ -792,7 +799,7 @@ function formatTime(value) {
 
 function setForm(config) {
     if (state.settingDirty) return;
-    restPasswordInput.value = config.rest_password || "";
+    restPasswordInput.value = "";
     pollIntervalInput.value = config.poll_interval_seconds;
     historyLimitInput.value = config.history_limit;
 }

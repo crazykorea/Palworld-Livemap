@@ -19,6 +19,17 @@ import uvicorn
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 CONFIG_PATH = BASE_DIR / "config.json"
+CONFIG_TEMPLATE_PATH = BASE_DIR / "config.example.json"
+LOCAL_ADMIN_HOSTS = {"127.0.0.1", "localhost", "::1"}
+PROXY_HEADER_NAMES = (
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-real-ip",
+    "forwarded",
+    "cf-connecting-ip",
+    "cf-ray",
+)
 
 
 DEFAULT_CONFIG = {
@@ -104,11 +115,20 @@ def deep_merge(base, override):
 
 def load_config():
     if not CONFIG_PATH.exists():
-        CONFIG_PATH.write_text(
-            json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False),
-            encoding="utf-8",
+        if CONFIG_TEMPLATE_PATH.exists():
+            CONFIG_PATH.write_text(
+                CONFIG_TEMPLATE_PATH.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+        else:
+            CONFIG_PATH.write_text(
+                json.dumps(DEFAULT_CONFIG, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        return deep_merge(
+            DEFAULT_CONFIG,
+            json.loads(CONFIG_PATH.read_text(encoding="utf-8")),
         )
-        return dict(DEFAULT_CONFIG)
 
     loaded = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     return deep_merge(DEFAULT_CONFIG, loaded)
@@ -119,6 +139,14 @@ def save_config(config):
         json.dumps(config, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+
+
+def sanitized_config(config):
+    safe_config = json.loads(json.dumps(config))
+    password = str(config.get("rest_password", "")).strip()
+    safe_config["rest_password"] = ""
+    safe_config["rest_password_configured"] = bool(password and password != "CHANGE_ME")
+    return safe_config
 
 
 class LogBuffer:
@@ -484,8 +512,26 @@ def get_external_ip():
 
 def ensure_local_request(request: Request):
     client_host = (request.client.host if request.client else "") or ""
+    request_host = ((request.url.hostname or "").strip("[]")).lower()
+
     if client_host not in {"127.0.0.1", "::1"}:
-        raise HTTPException(status_code=403, detail="Admin access is limited to localhost.")
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access is only available from this PC.",
+        )
+
+    if request_host not in LOCAL_ADMIN_HOSTS:
+        raise HTTPException(
+            status_code=403,
+            detail="Open the admin page only through http://127.0.0.1 or http://localhost on this PC.",
+        )
+
+    for header_name in PROXY_HEADER_NAMES:
+        if request.headers.get(header_name):
+            raise HTTPException(
+                status_code=403,
+                detail="Admin access is blocked through domains, tunnels, and reverse proxies.",
+            )
 
 
 @app.get("/")
@@ -543,7 +589,7 @@ async def api_status(request: Request):
     external_link = f"http://{external_ip}:{CONFIG['web_port']}" if external_ip else None
     return JSONResponse(
         {
-            "config": CONFIG,
+            "config": sanitized_config(CONFIG),
             "player_count": len(snapshot["players"]),
             "updated_at": snapshot["updated_at"],
             "last_error": snapshot["error"],
@@ -560,12 +606,16 @@ async def api_status(request: Request):
 @app.get("/api/config")
 async def api_get_config(request: Request):
     ensure_local_request(request)
-    return JSONResponse(CONFIG)
+    return JSONResponse(sanitized_config(CONFIG))
 
 
 @app.post("/api/config")
 async def api_save_config(payload: dict, request: Request):
     ensure_local_request(request)
+    payload = dict(payload or {})
+    if not str(payload.get("rest_password", "")).strip():
+        payload.pop("rest_password", None)
+
     required_numbers = {
         "poll_interval_seconds": 1,
         "history_limit": 1,
@@ -583,7 +633,7 @@ async def api_save_config(payload: dict, request: Request):
     save_config(CONFIG)
     player_manager.configure(CONFIG)
     LOGS.add("INFO", "Configuration updated from admin UI.")
-    return JSONResponse({"ok": True, "config": CONFIG})
+    return JSONResponse({"ok": True, "config": sanitized_config(CONFIG)})
 
 
 def poll_players_loop():

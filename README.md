@@ -66,6 +66,7 @@ Cloudflare Tunnel or reverse proxy:
 - The admin page is blocked through domains, tunnels, and reverse proxies.
 - The public Live Map page supports language switching.
 - The admin page supports language switching.
+- Anyone with the public Live Map link can see player names, map positions, movement trails, and join or leave activity.
 - Player join and leave activity is logged automatically.
 - `config.example.json` is included in the repository.
 - `config.json` is created locally at first run and is not meant to be committed.
@@ -141,6 +142,7 @@ Cloudflare Tunnel 또는 리버스 프록시:
 - 관리자 페이지는 도메인, 터널, 리버스 프록시를 통한 접근이 차단됩니다.
 - 공개 Live Map 페이지는 언어 변경을 지원합니다.
 - 관리자 페이지도 언어 변경을 지원합니다.
+- 공개 Live Map 링크를 받은 사람은 플레이어 이름, 지도 위치, 이동 경로, 접속 및 퇴장 기록을 볼 수 있습니다.
 - 플레이어 접속 및 퇴장 기록은 자동으로 저장됩니다.
 - 저장소에는 `config.example.json` 이 포함되어 있습니다.
 - 실제 `config.json` 은 첫 실행 때 로컬에서 생성되며, 커밋 대상이 아닙니다.
@@ -216,6 +218,7 @@ Cloudflare Tunnel またはリバースプロキシ:
 - 管理ページはドメイン、トンネル、リバースプロキシ経由ではブロックされます。
 - 公開 Live Map ページは言語切替に対応しています。
 - 管理ページも言語切替に対応しています。
+- 公開 Live Map のリンクを知っている人は、プレイヤー名、地図上の位置、移動軌跡、参加・退出記録を見ることができます。
 - プレイヤーの参加・退出記録は自動的に保存されます。
 - リポジトリには `config.example.json` が含まれています。
 - 実際の `config.json` は初回起動時にローカルで生成され、コミット対象ではありません。
@@ -291,6 +294,7 @@ Cloudflare Tunnel o proxy inverso:
 - La página de administración se bloquea cuando se accede mediante dominios, túneles o proxies inversos.
 - La página pública del Live Map permite cambiar el idioma.
 - La página de administración también permite cambiar el idioma.
+- Cualquier persona que tenga el enlace público del Live Map podrá ver los nombres de los jugadores, sus posiciones en el mapa, sus rutas de movimiento y los registros de entrada y salida.
 - El registro de entradas y salidas se guarda automáticamente.
 - El repositorio incluye `config.example.json`.
 - `config.json` se crea localmente en el primer inicio y no debe subirse al repositorio.
@@ -366,6 +370,7 @@ Cloudflare Tunnel 或反向代理：
 - 管理员页面会阻止通过域名、隧道和反向代理访问。
 - 公开 Live Map 页面支持语言切换。
 - 管理员页面也支持语言切换。
+- 任何获得公开 Live Map 链接的人，都可以看到玩家名称、地图位置、移动轨迹以及上线和离线记录。
 - 玩家上线与离线记录会自动保存。
 - 仓库中包含 `config.example.json`。
 - 实际 `config.json` 会在首次启动时于本地生成，不应提交到仓库。

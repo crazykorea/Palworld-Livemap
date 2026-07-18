@@ -869,7 +869,7 @@ function renderPlayers() {
             continue;
         }
         const tag = document.createElement("div");
-        tag.className = `player-tag${player.steamid === state.trackedSteamId ? " tracked" : ""}`;
+        tag.className = `player-tag${player.id === state.trackedSteamId ? " tracked" : ""}`;
         tag.style.color = player.color;
         tag.innerHTML = `
             <span class="player-name">${escapeHtml(player.name)}</span>
@@ -929,7 +929,7 @@ function renderPlayerList() {
     for (const player of state.players) {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = `player-row${player.steamid === state.trackedSteamId ? " tracked" : ""}`;
+        button.className = `player-row${player.id === state.trackedSteamId ? " tracked" : ""}`;
         button.innerHTML = `
             <span class="player-swatch" style="background:${player.color}"></span>
             <span class="player-meta">
@@ -971,7 +971,7 @@ function renderTrackingBadge() {
         trackingBadge.style.display = "none";
         return;
     }
-    const player = state.players.find((item) => item.steamid === state.trackedSteamId);
+    const player = state.players.find((item) => item.id === state.trackedSteamId);
     if (!player) {
         state.trackedSteamId = null;
         trackingBadge.style.display = "none";
@@ -994,7 +994,7 @@ function renderAll() {
 }
 
 function trackPlayer(player) {
-    state.trackedSteamId = player.steamid;
+    state.trackedSteamId = player.id;
     state.cameraX = player.position.x;
     state.cameraY = player.position.y;
     state.zoom = clamp(Math.max(state.zoom, state.minZoom * 2.4), state.minZoom, state.maxZoom);
@@ -1058,7 +1058,7 @@ function formatCoord(position) {
 
 function updateTrackedPlayerFromPayload() {
     if (!state.trackedSteamId) return;
-    const tracked = state.players.find((player) => player.steamid === state.trackedSteamId);
+    const tracked = state.players.find((player) => player.id === state.trackedSteamId);
     if (!tracked) {
         state.trackedSteamId = null;
         return;

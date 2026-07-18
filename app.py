@@ -2,6 +2,7 @@ import base64
 from collections import deque
 from colorsys import hsv_to_rgb
 from datetime import datetime
+import hashlib
 import json
 from pathlib import Path
 import random
@@ -149,6 +150,27 @@ def sanitized_config(config):
     return safe_config
 
 
+def build_public_player(player):
+    return {
+        "id": player["public_id"],
+        "name": player["name"],
+        "level": player["level"],
+        "position": dict(player["position"]),
+        "history": list(player["history"]),
+        "color": player["color"],
+        "last_update": player["last_update"],
+    }
+
+
+def build_public_event(event):
+    return {
+        "time": event["time"],
+        "type": event["type"],
+        "name": event["name"],
+        "level": event["level"],
+    }
+
+
 class LogBuffer:
     def __init__(self, maxlen=400):
         self.items = deque(maxlen=maxlen)
@@ -171,6 +193,7 @@ class LogBuffer:
 
 CONFIG = load_config()
 LOGS = LogBuffer()
+EXTERNAL_IP_CACHE = {"value": None, "fetched_at": 0.0}
 
 
 def coerce_float(value):
@@ -407,6 +430,7 @@ class PlayerManager:
                 if player is None:
                     player = {
                         "steamid": steam_id,
+                        "public_id": hashlib.sha256(steam_id.encode("utf-8")).hexdigest()[:16],
                         "name": str(item.get("name") or item.get("accountName") or "Unknown"),
                         "level": int(item.get("level") or 0),
                         "position": map_position,
@@ -464,6 +488,7 @@ class PlayerManager:
             players = [
                 {
                     "steamid": player["steamid"],
+                    "public_id": player["public_id"],
                     "name": player["name"],
                     "level": player["level"],
                     "position": dict(player["position"]),
@@ -502,12 +527,16 @@ def get_local_ip():
 
 
 def get_external_ip():
+    if time.time() - EXTERNAL_IP_CACHE["fetched_at"] < 600 and EXTERNAL_IP_CACHE["value"]:
+        return EXTERNAL_IP_CACHE["value"]
     try:
         response = requests.get("https://api.ipify.org?format=json", timeout=4)
         response.raise_for_status()
-        return response.json().get("ip")
+        EXTERNAL_IP_CACHE["value"] = response.json().get("ip")
+        EXTERNAL_IP_CACHE["fetched_at"] = time.time()
+        return EXTERNAL_IP_CACHE["value"]
     except Exception:
-        return None
+        return EXTERNAL_IP_CACHE["value"]
 
 
 def ensure_local_request(request: Request):
@@ -548,15 +577,17 @@ async def admin(request: Request):
 @app.get("/api/players")
 async def api_players():
     snapshot = player_manager.snapshot()
+    public_players = [build_public_player(player) for player in snapshot["players"]]
+    public_events = [build_public_event(event) for event in snapshot["connection_events"][:120]]
     return JSONResponse(
         {
-            "players": snapshot["players"],
-            "count": len(snapshot["players"]),
+            "players": public_players,
+            "count": len(public_players),
             "updated_at": snapshot["updated_at"],
             "error": snapshot["error"],
             "poll_interval": player_manager.poll_interval_seconds,
             "server_running": True,
-            "connection_events": snapshot["connection_events"][:120],
+            "connection_events": public_events,
             "map": {
                 "background": player_manager.map_background,
                 "world_bounds": player_manager.world_bounds,
